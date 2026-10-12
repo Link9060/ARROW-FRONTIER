@@ -21,6 +21,9 @@ export class FlightScene extends Phaser.Scene {
   private beam!: Phaser.GameObjects.Graphics;
   private rangeIndicator!: Phaser.GameObjects.Graphics;
   private controlsBlocked = true;
+  private virtualMove = {x:0,y:0};
+  private virtualMining = false;
+  private velocity = new Map<string,{x:number,y:number}>();
   private cameraAnchor!: Phaser.GameObjects.Zone;
   private mode: ViewMode = 'flight';
   private pinch?: PinchGesture;
@@ -131,16 +134,25 @@ export class FlightScene extends Phaser.Scene {
   private flightZoom(): number {
     return (window.innerWidth < 680 ? .87 : window.innerWidth < 1100 ? 1.05 : 1.16) * this.deviceScale();
   }
+  private interiorMargins(): {left:number;right:number} {
+    const panelOpen = document.body.dataset.uiPanel === 'build' ||
+      document.body.dataset.uiPanel === 'fleet';
+    return {
+      left:window.innerWidth > 760 ? 300 : 0,
+      right:panelOpen ? Math.min(365,window.innerWidth*.32) : 0,
+    };
+  }
   private interiorZoom(): number {
-    const reservedWidth = window.innerWidth >= 1000 ? 390 : window.innerWidth >= 700 ? 180 : 0;
-    const availableWidth = Math.max(280, window.innerWidth - reservedWidth - 75);
-    const availableHeight = Math.max(300, window.innerHeight - 185);
-    return Math.max(.26, Math.min(1.05, availableWidth / 1220, availableHeight / 850)) * this.deviceScale();
+    const margins=this.interiorMargins();
+    const availableWidth=Math.max(240,window.innerWidth-margins.left-margins.right-55);
+    const availableHeight=Math.max(280,window.innerHeight-155);
+    return Math.max(.24,Math.min(1.12,availableWidth/1220,availableHeight/850))*this.deviceScale();
   }
   private interiorFocus(): Point {
-    const rightPanelOffset = window.innerWidth >= 1000 ? 165 : window.innerWidth >= 700 ? 80 : 0;
-    const zoomCss = this.interiorZoom() / this.deviceScale();
-    return { x: HOME.x + rightPanelOffset / Math.max(.25, zoomCss), y: HOME.y };
+    const margins=this.interiorMargins();
+    const offset=(margins.left-margins.right)/2;
+    const cssZoom=this.interiorZoom()/this.deviceScale();
+    return {x:HOME.x-offset/Math.max(.24,cssZoom),y:HOME.y};
   }
   getCameraStatus(): { zoom: number; worldX: number; worldY: number } {
     const camera=this.cameras?.main;
@@ -169,29 +181,28 @@ export class FlightScene extends Phaser.Scene {
   }
   private setViewMode(mode: ViewMode): void {
     this.mode = mode;
+    if(mode !== 'flight')this.velocity.clear();
     this.pinch = undefined;
     this.onViewChange(mode);
   }
 
   private drawBackground(): void {
     const g = this.add.graphics().setDepth(-50);
-    g.fillGradientStyle(0x091524, 0x05080d, 0x050b15, 0x020509);
+    g.fillGradientStyle(0x09090a,0x050506,0x080809,0x030303);
     g.fillRect(0, 0, WORLD.width, WORLD.height);
     let seed = 41097;
     const rand = (): number => { seed = seed * 16807 % 2147483647; return seed / 2147483647; };
-    for (let i = 0; i < 1150; i++) {
-      g.fillStyle(rand() > .8 ? 0xbdd9f4 : 0x67849c, .15 + rand() * .53);
+    for (let i = 0; i < 850; i++) {
+      g.fillStyle(rand() > .8 ? 0xe8e8e8 : 0x757577, .10 + rand() * .48);
       g.fillCircle(rand() * WORLD.width, rand() * WORLD.height, rand() > .95 ? 1.5 : .6);
     }
-    g.lineStyle(1, 0x486884, .1);
+    g.lineStyle(1, 0x7a7a7a, .035);
     for (let x = 0; x < WORLD.width; x += 200) g.lineBetween(x, 0, x, WORLD.height);
     for (let y = 0; y < WORLD.height; y += 200) g.lineBetween(0, y, WORLD.width, y);
-    g.lineStyle(1, 0x7598b5, .12);
+    g.lineStyle(1, 0x888888, .065);
     g.strokeCircle(HOME.x, HOME.y, 920);
     g.strokeCircle(HOME.x, HOME.y, 1250);
-    this.add.text(HOME.x - 1050, HOME.y - 1200, 'VESTA / ANCHOR POINT', {
-      fontFamily: 'monospace', fontSize: '17px', color: '#7790ac', letterSpacing: 3,
-    }).setDepth(-1);
+    // Leave world labels to the interface. Nothing decorative competes with the ship.
   }
 
   private makeAsteroid(asteroid: Asteroid): Phaser.GameObjects.Container {
@@ -268,16 +279,33 @@ export class FlightScene extends Phaser.Scene {
     if(ship.docked)return;
     let dx=0,dy=0;
     if(this.keys.W.isDown||this.keys.UP.isDown)dy--;
+    dy+=this.virtualMove.y;
     if(this.keys.S.isDown||this.keys.DOWN.isDown)dy++;
     if(this.keys.A.isDown||this.keys.LEFT.isDown)dx--;
     if(this.keys.D.isDown||this.keys.RIGHT.isDown)dx++;
-    if(dx||dy){
-      const length=Math.hypot(dx,dy);
-      ship.x=Phaser.Math.Clamp(ship.x+dx/length*ship.speed*dt,35,WORLD.width-35);
-      ship.y=Phaser.Math.Clamp(ship.y+dy/length*ship.speed*dt,35,WORLD.height-35);
+    dx+=this.virtualMove.x;
+    // Acceleration and gentle damping make piloting feel like a vehicle, not
+    // moving a cursor around a desktop. The speed cap is unchanged.
+    const v=this.velocity.get(ship.id)??{x:0,y:0};
+    const length=Math.hypot(dx,dy);
+    const acceleration=ship.speed*4.5;
+    if(length>0){
+      v.x+=(dx/length)*acceleration*dt;
+      v.y+=(dy/length)*acceleration*dt;
     }
+    const drag=Math.exp(-3.8*dt);
+    v.x*=drag;v.y*=drag;
+    const speed=Math.hypot(v.x,v.y);
+    if(speed>ship.speed){v.x*=ship.speed/speed;v.y*=ship.speed/speed;}
+    ship.x=Phaser.Math.Clamp(ship.x+v.x*dt,35,WORLD.width-35);
+    ship.y=Phaser.Math.Clamp(ship.y+v.y*dt,35,WORLD.height-35);
+    this.velocity.set(ship.id,v);
     const pointer=this.input.activePointer;
-    ship.angle=Phaser.Math.Angle.Between(ship.x,ship.y,pointer.worldX,pointer.worldY);
+    if(this.virtualMove.x||this.virtualMove.y){
+      ship.angle=Math.atan2(this.virtualMove.y,this.virtualMove.x);
+    }else if(pointer){
+      ship.angle=Phaser.Math.Angle.Between(ship.x,ship.y,pointer.worldX,pointer.worldY);
+    }
   }
 
   private stepMining(dt:number):void {
@@ -294,7 +322,7 @@ export class FlightScene extends Phaser.Scene {
         if(hit<best){best=hit;target=asteroid;}
       }
     }
-    if(!target && this.keys.SPACE.isDown)target=nearestDeposit(this.state,ship);
+    if(!target && (this.keys.SPACE.isDown||this.virtualMining))target=nearestDeposit(this.state,ship);
     if(!target || distance(ship,target)>MINE_RANGE)return;
     const mined=extractOre(this.state,ship,target,dt*ship.miningRate);
     if(mined>0){
@@ -448,6 +476,10 @@ export class FlightScene extends Phaser.Scene {
   nextShip():void {
     const index=this.state.ships.findIndex(ship=>ship.id===this.state.activeShipId);
     this.selectShip(this.state.ships[(index+1)%this.state.ships.length].id);
+  }
+  setVirtualInput(x:number,y:number,mining:boolean):void {
+    this.virtualMove={x:Math.max(-1,Math.min(1,x)),y:Math.max(-1,Math.min(1,y))};
+    this.virtualMining=mining;
   }
   setControlsBlocked(blocked:boolean):void {
     this.controlsBlocked=blocked;
