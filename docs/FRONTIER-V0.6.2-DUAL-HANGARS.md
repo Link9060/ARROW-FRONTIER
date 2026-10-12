@@ -10,7 +10,7 @@ ARROW faces +X, with the bridge in the narrow front and split-tail engines in th
 
 | System | Coordinates (ship-local) |
 | --- | --- |
-| Central modular deck | X −242..+270; Y −74..+74 |
+| Central modular deck | X −242..+270; Y −59..+59 |
 | North Hangar A | X −282..−62; Y −77 up to −134/−189/−244 by capacity |
 | South Hangar B | X −282..−62; Y +77 down to +134/+189/+244 |
 | Berth columns (both hangars) | X −240, −145 |
@@ -20,7 +20,7 @@ ARROW faces +X, with the bridge in the narrow front and split-tail engines in th
 | Approach points | X −75, Y ±480 |
 | External release | X −75, Y ±802 |
 
-The 4/8/12 berth levels install **two new bays per side** with each expansion. These compartments grow *inward within the actual ARROW logo*, not as rectangles that extend beyond the hull.
+The core leaves enough clearance for ships taxiing along either wing, without sliding through installed rooms. The 4/8/12 berth levels install **two new bays per side** with each expansion. These compartments grow *inward within the actual ARROW logo*, not as rectangles that extend beyond the hull.
 
 ## Bay assignment and ship scaling
 
