@@ -22,6 +22,15 @@ describe('FRONTIER screen and save transition recovery',()=>{
     expect(ship.x).toBe(original.x);
     expect(ship.y).toBe(original.y);
   });
+  it('does not displace a ship legitimately flying in the ARROW rear notch',()=>{
+    const state=makeNewGame(1000);
+    const scout=state.ships[0];
+    launchShip(scout);
+    scout.x=HOME.x-430;
+    scout.y=HOME.y;
+    expect(recoverInterruptedDocking(state)).toBe(false);
+    expect(scout.x).toBe(HOME.x-430);
+  });
   it('does not displace any ship properly docked in a berth',()=>{
     const state=makeNewGame(1000);
     const ship=state.ships[0];
