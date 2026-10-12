@@ -95,7 +95,7 @@ export function makeNewGame(now = Date.now()): GameState {
     ships: [
       {
         id: 'scout', name: 'ARROW-01', role: 'SCOUT / HYBRID',
-        x: HOME.x - 212, y: HOME.y - 119, angle: -Math.PI / 2,
+        x: HOME.x - 240, y: HOME.y - 106, angle: -Math.PI / 2,
         capacity: 60, speed: 285, miningRate: 8,
         cargo: { iron: 0, copper: 0 }, docked: true, berth: 0, mode: 'manual',
         upgrades: { mining: 0, cargo: 0 },
