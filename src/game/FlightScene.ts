@@ -633,6 +633,13 @@ export class FlightScene extends Phaser.Scene {
     this.cameraTouched=false;
     this.cameras.main.stopFollow();
     this.setViewMode('transition');
+    // The player has already saved the pre-cinematic checkpoint. Reserve the
+    // real selected berth now so parallel miners cannot take it mid-approach.
+    ship.berth=berth;
+    ship.navigation={
+      kind:'dock',side:this.currentDockSide,berth,step:0,
+      origin:{x:ship.x,y:ship.y},
+    };
     this.announce('AUTOPILOT · ALIGNING WITH SIDE HANGAR');
     // Ease away from the freely-piloted flight camera before acquiring the
     // automatic docking route so player control never visually snaps.
@@ -641,6 +648,8 @@ export class FlightScene extends Phaser.Scene {
     this.flyRoute(ship,waypoints,false,()=>{
       const result=dockShip(this.state,ship);
       if(result!=='docked'){
+        ship.navigation=undefined;
+        ship.berth=undefined;
         this.setArtworkOpacity(1);
         this.setViewMode('flight');
         this.refreshCameraZoom();
