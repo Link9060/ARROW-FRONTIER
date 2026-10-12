@@ -168,6 +168,11 @@ export function fleetShipStatus(state:GameState,ship:Ship):string {
   const cargo=cargoTotal(ship.cargo);
   const space=state.storageCapacity-storedTotal(state.stored);
   const oreAvailable=state.asteroids.some(asteroid=>asteroid.remaining>0);
+  if(!ship.docked && (order==='return'||cargo>=ship.capacity-.001||
+      space<=.001||!oreAvailable) &&
+      distance(ship,HOME)<=DOCK_RADIUS &&
+      findAvailableBerth(state,ship)===null)
+    return 'WAITING · HANGAR FULL';
   if(ship.docked){
     if(cargo>.001&&space<=.001)return 'WAITING · STORAGE FULL';
     if(cargo>.001)return 'WAITING · UNLOAD SPACE';
