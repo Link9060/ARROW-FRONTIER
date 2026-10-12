@@ -120,6 +120,7 @@ export function reconcileBerths(state: GameState): void {
     const position = berthWorldPosition(ship);
     ship.x = position.x;
     ship.y = position.y;
+    ship.angle = -Math.PI / 2;
   }
 }
 
