@@ -72,7 +72,8 @@ export function findAvailableBerth(state:GameState,ship:Ship):number|null {
   const limit=hangarCapacity(state),span=shipBerthSpan(ship);
   const occupied=new Set<number>();
   for(const other of state.ships) {
-    if(other.id===ship.id||!other.docked||other.berth===undefined)continue;
+    if(other.id===ship.id||other.berth===undefined ||
+      (!other.docked&&!other.navigation))continue;
     for(const slot of berthRange(other.berth,shipBerthSpan(other)))occupied.add(slot);
   }
   // Keep assignments stable across saves and ship switching.

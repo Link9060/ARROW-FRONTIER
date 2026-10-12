@@ -35,7 +35,9 @@ jobs:
         if: always()
         with:
           name: frontier-visual-review
-          path: test-results/v06-*.png
+          path: |
+            test-results/v06-*.png
+            test-results/v063-*.png
           if-no-files-found: ignore
       - uses: actions/upload-artifact@v4
         if: failure()

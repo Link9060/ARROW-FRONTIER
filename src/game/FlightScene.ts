@@ -33,6 +33,7 @@ export class FlightScene extends Phaser.Scene {
   private tractorPhase = 0;
   private currentDockSide:HangarSide='north';
   private enginePhase = 0;
+  private berthFingerprint = '';
   private controlsBlocked = true;
   private virtualMove = {x:0,y:0};
   private virtualMining = false;
@@ -159,7 +160,10 @@ export class FlightScene extends Phaser.Scene {
     this.art?.roof.destroy(true);
     this.art?.interior.destroy(true);
     this.art?.doors.destroy(true);
-    this.art = buildMothershipArtwork(this, this.state, HOME.x, HOME.y);
+    this.art = buildMothershipArtwork(this,this.state,HOME.x,HOME.y);
+    this.berthFingerprint=this.state.ships
+      .filter(ship=>ship.docked||ship.navigation)
+      .map(ship=>ship.id+':'+ship.berth+':'+(ship.navigation?.kind??'parked')).join('|');
     this.setArtworkOpacity(roofAlpha);
     if (!this.dockRing) {
       this.dockRing = this.add.graphics().setDepth(3);
@@ -629,6 +633,13 @@ export class FlightScene extends Phaser.Scene {
     this.cameraTouched=false;
     this.cameras.main.stopFollow();
     this.setViewMode('transition');
+    // The player has already saved the pre-cinematic checkpoint. Reserve the
+    // real selected berth now so parallel miners cannot take it mid-approach.
+    ship.berth=berth;
+    ship.navigation={
+      kind:'dock',side:this.currentDockSide,berth,step:0,
+      origin:{x:ship.x,y:ship.y},
+    };
     this.announce('AUTOPILOT · ALIGNING WITH SIDE HANGAR');
     // Ease away from the freely-piloted flight camera before acquiring the
     // automatic docking route so player control never visually snaps.
@@ -637,6 +648,8 @@ export class FlightScene extends Phaser.Scene {
     this.flyRoute(ship,waypoints,false,()=>{
       const result=dockShip(this.state,ship);
       if(result!=='docked'){
+        ship.navigation=undefined;
+        ship.berth=undefined;
         this.setArtworkOpacity(1);
         this.setViewMode('flight');
         this.refreshCameraZoom();
@@ -702,6 +715,11 @@ export class FlightScene extends Phaser.Scene {
 
   selectShip(id:string):void {
     if(this.mode==='transition')return;
+    const next=this.state.ships.find(ship=>ship.id===id);
+    if(next?.navigation){
+      this.announce('WAIT FOR AUTOPILOT TO CLEAR THE HANGAR');
+      return;
+    }
     if(!switchShip(this.state,id))return;
     const ship=activeShip(this.state);
     if(ship.docked){
@@ -802,9 +820,15 @@ export class FlightScene extends Phaser.Scene {
         remaining-=step;
       }
     }
-    // Cinematics pause the autonomous fleet for a few seconds to reserve a
-    // stable berth and prevent a parallel docking task from stealing its slot.
-    const elapsed=this.mode==='transition'?0:advanceActiveSimulation(this.state,delta/1000);
+    // The cinematic temporarily owns ONLY the manually piloted ship. Other
+    // vessels keep flying, extracting ore, docking and unloading during it.
+    // Berths are reserved by the player's existing docked state or assigned
+    // atomically by dockShip, so the full fleet no longer freezes.
+    const elapsed=advanceActiveSimulation(this.state,delta/1000);
+    const berthFingerprint=this.state.ships
+      .filter(ship=>ship.docked).map(ship=>ship.id+':'+ship.berth).join('|');
+    if(this.mode!=='transition' && berthFingerprint!==this.berthFingerprint)
+      this.drawMothership();
     if(this.mode==='flight' && !this.cameraTouched){
       const ship=activeShip(this.state);
       this.cameraAnchor.setPosition(ship.x,ship.y);

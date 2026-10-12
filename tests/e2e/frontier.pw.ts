@@ -192,3 +192,86 @@ test('dual-side hangars: saved industrial miner occupies lower bay and launches 
   await page.screenshot({path:'test-results/v06-dual-lower-return.png'});
   expect(errors).toEqual([]);
 });
+
+
+test('background miner continues flying while the player launches and docks',async({page})=>{
+  const errors:string[]=[];
+  page.on('pageerror',e=>errors.push(e.message));
+  await page.goto('/');
+  await page.locator('#start-btn').click();
+  const miner=page.locator('.fleet-ship[data-ship-id="miner"]');
+  await expect(miner).toHaveAttribute('data-order','mine');
+  await page.locator('#hangar-launch-btn').click();
+  await expect(page.locator('body')).toHaveAttribute('data-frontier-view','transition');
+  const before={
+    x:Number(await miner.getAttribute('data-world-x')),
+    y:Number(await miner.getAttribute('data-world-y')),
+    cargo:Number(await miner.getAttribute('data-cargo')),
+  };
+  // This used to fail: FlightScene skipped the entire simulation whenever
+  // the active scout was in its multi-second launch cinematic.
+  await expect.poll(async()=>{
+    const x=Number(await miner.getAttribute('data-world-x'));
+    const y=Number(await miner.getAttribute('data-world-y'));
+    const cargo=Number(await miner.getAttribute('data-cargo'));
+    // The miner may already be stationary at its ore deposit. Progress in
+    // either position OR extracted cargo proves the whole fleet keeps ticking.
+    return Math.hypot(x-before.x,y-before.y)>8 || cargo-before.cargo>.2;
+  },{timeout:6500,intervals:[250,300,500]}).toBe(true);
+  await expect(page.locator('body')).toHaveAttribute('data-frontier-view','flight',{timeout:40_000});
+  expect(errors).toEqual([]);
+});
+
+test('Fleet panel dispatches docked miner, recalls it and retains Hold without manual pilot switching',async({page})=>{
+  const errors:string[]=[];
+  page.on('pageerror',e=>errors.push(e.message));
+  await page.goto('/');
+  await page.locator('#start-btn').click();
+  await page.locator('#save-toggle').click();
+  await page.addInitScript(()=>{
+    const key='arrow-frontier-expansion-v2';
+    const json=localStorage.getItem(key);
+    if(!json)throw new Error('Missing game save');
+    const game=JSON.parse(json);
+    const miner=game.ships.find((s:{id:string})=>s.id==='miner');
+    miner.docked=true;
+    miner.berth=2;
+    miner.x=2200-192.5;
+    miner.y=1600+106;
+    miner.angle=Math.PI/2;
+    miner.mode='hold';
+    miner.order='hold';
+    miner.turnaround=0;
+    game.savedAt=Date.now();
+    localStorage.setItem(key,JSON.stringify(game));
+  });
+  await page.reload();
+  await page.locator('#start-btn').click();
+  await page.locator('#fleet-toggle').click();
+  const miner=page.locator('.fleet-ship[data-ship-id="miner"]');
+  await expect(miner).toHaveAttribute('data-docked','true');
+  await expect(miner.locator('.fleet-state')).toContainText('DOCKED');
+  await expect(page.locator('.fleet-ship')).toHaveCount(2);
+  const mine=page.locator('.fleet-entry[data-member-id="miner"] .fleet-order[data-fleet-order="mine"]');
+  const recall=page.locator('.fleet-entry[data-member-id="miner"] .fleet-order[data-fleet-order="return"]');
+  const hold=page.locator('.fleet-entry[data-member-id="miner"] .fleet-order[data-fleet-order="hold"]');
+  await mine.click();
+  await expect(miner).toHaveAttribute('data-order','mine');
+  await expect(miner).toHaveAttribute('data-docked','false',{timeout:7000});
+  await expect(page.locator('#hangar-summary')).toContainText('ARROW-01');
+  await page.screenshot({path:'test-results/v063-fleet-mine.png'});
+  await recall.click();
+  await expect(miner).toHaveAttribute('data-order','return');
+  await expect(miner).toHaveAttribute('data-docked','true',{timeout:45000});
+  await expect(miner).toHaveAttribute('data-order','hold');
+  await expect(miner.locator('.fleet-state')).toContainText('DOCKED');
+  await page.screenshot({path:'test-results/v063-fleet-recalled.png'});
+  await mine.click();
+  await expect(miner).toHaveAttribute('data-docked','false',{timeout:7000});
+  await hold.click();
+  await expect(miner).toHaveAttribute('data-order','hold');
+  // Hold must finish any occupied airlock route first; never freeze a ship
+  // halfway across the landing gates.
+  await expect(miner.locator('.fleet-state')).toContainText('HOLDING',{timeout:20000});
+  expect(errors).toEqual([]);
+});

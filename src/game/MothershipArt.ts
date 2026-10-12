@@ -165,7 +165,7 @@ export function buildMothershipArtwork(scene:Phaser.Scene,state:GameState,
       if(Math.sign(p.y)!==sign)continue;
       // Wide ships OWN a physically combined double berth. Draw one merged
       // parking cradle whose center is EXACTLY berthWorldPosition(ship).
-      const wide=state.ships.some(ship=>ship.docked &&
+      const wide=state.ships.some(ship=>(ship.docked||!!ship.navigation) &&
         ship.berth===berth && shipBerthSpan(ship)===2);
       const paired=wide&&berth+1<capacity&&berth%2===0;
       if(paired)consumed.add(berth+1);

@@ -2,8 +2,9 @@ import Phaser from 'phaser';
 import './style.css';
 import { FlightScene } from './game/FlightScene';
 import type { ViewMode } from './game/FlightScene';
-import { activeShip, roundCargo } from './sim/engine';
+import { activeShip, assignShipOrder, fleetShipStatus, roundCargo, shipOrder } from './sim/engine';
 import { cargoTotal, distance, DOCK_RADIUS, HOME, storedTotal } from './sim/model';
+import type { FleetOrder } from './sim/model';
 import { dockedBerthCount, hangarCapacity, sideForBerth } from './sim/hangar';
 import { powerReport } from './sim/mothership';
 import { loadGame, saveGame, resetGame } from './sim/persistence';
@@ -111,6 +112,37 @@ function requestLaunchOrDock():void{
   scene.launchOrDock();
 }
 
+function commandFleetShip(shipId:string,order:FleetOrder):void {
+  if(!started||scene.viewMode==='transition'){
+    notice('Finish the current docking sequence first.');
+    return;
+  }
+  const target=state.ships.find(ship=>ship.id===shipId);
+  if(!target)return;
+  if(shipId===state.activeShipId){
+    // A ship cannot be both player-piloted and autonomously assigned. Hand
+    // controls to another existing ship instead of forcing the player to
+    // manually launch and switch before dispatching this one.
+    const replacement=state.ships.find(ship=>ship.id!==shipId&&ship.docked&&!ship.navigation) ??
+      state.ships.find(ship=>ship.id!==shipId&&!ship.navigation);
+    if(!replacement){
+      notice('Another ship is required before delegating your own ship.');
+      return;
+    }
+    scene.selectShip(replacement.id);
+  }
+  const result=assignShipOrder(state,shipId,order);
+  if(result!=='assigned'){
+    notice('Could not assign fleet order.');
+    return;
+  }
+  updateUI();
+  persist();
+  notice(order==='mine'?target.name+' · continuous mining assigned':
+    order==='return'?target.name+' · returning to mothership':
+    target.name+' · holding position');
+}
+
 function updateUI():void{
   const ship=activeShip(state);
   const cargo=cargoTotal(ship.cargo);
@@ -154,35 +186,73 @@ function updateUI():void{
 
   const list=$('fleet');
   for(const member of state.ships){
-    let row=list.querySelector<HTMLButtonElement>('[data-ship-id="'+member.id+'"]');
-    if(!row){
-      row=document.createElement('button');
-      row.type='button';
-      row.className='fleet-ship';
-      row.dataset.shipId=member.id;
+    let entry=list.querySelector<HTMLDivElement>('.fleet-entry[data-member-id="'+member.id+'"]');
+    if(!entry){
+      entry=document.createElement('div');
+      entry.className='fleet-entry';
+      entry.dataset.memberId=member.id;
+
+      // Pilot and mission controls are separate buttons. No nested interactive
+      // elements, accidental pilot changes or inaccessible click surfaces.
+      const pilot=document.createElement('button');
+      pilot.type='button';pilot.className='fleet-ship';
+      pilot.dataset.shipId=member.id;
+      pilot.title='Pilot '+member.name;
       const identity=document.createElement('span');
       identity.className='fleet-identity';
-      const name=document.createElement('strong');
-      name.className='fleet-name';
-      const role=document.createElement('small');
-      role.className='fleet-role';
+      const name=document.createElement('strong');name.className='fleet-name';
+      const role=document.createElement('small');role.className='fleet-role';
       identity.append(name,role);
       const status=document.createElement('small');
       status.className='fleet-state';
-      row.append(identity,status);
-      row.addEventListener('click',()=>{
+      pilot.append(identity,status);
+      pilot.addEventListener('click',()=>{
         if(scene.viewMode==='transition')return;
         scene.selectShip(member.id);
         setFleetOpen(false);
         updateUI();
       });
-      list.appendChild(row);
+      const controls=document.createElement('div');
+      controls.className='fleet-controls';
+      for(const [order,label] of [
+        ['mine','Mine ↗'],['return','Return ↙'],['hold','Hold']
+      ] as const){
+        const action=document.createElement('button');
+        action.type='button';action.className='fleet-order';
+        action.dataset.fleetOrder=order;
+        action.dataset.shipId=member.id;
+        action.textContent=label;
+        action.setAttribute('aria-label',label+' with '+member.name);
+        action.addEventListener('click',()=>commandFleetShip(member.id,order));
+        controls.append(action);
+      }
+      entry.append(pilot,controls);
+      list.append(entry);
     }
-    row.classList.toggle('selected',member.id===state.activeShipId);
-    row.querySelector('.fleet-name')!.textContent=member.name;
-    row.querySelector('.fleet-role')!.textContent=member.role;
-    row.querySelector('.fleet-state')!.textContent=member.id===state.activeShipId?
-      'Piloting':member.mode==='auto'?'Automated':'Idle';
+    const pilot=entry.querySelector<HTMLButtonElement>('.fleet-ship')!;
+    pilot.classList.toggle('selected',member.id===state.activeShipId);
+    pilot.disabled=!!member.navigation;
+    pilot.title=member.navigation?'Autopilot taxi in progress · wait until clear':'Pilot '+member.name;
+    pilot.dataset.worldX=member.x.toFixed(2);
+    pilot.dataset.worldY=member.y.toFixed(2);
+    pilot.dataset.docked=String(member.docked);
+    pilot.dataset.order=shipOrder(member);
+    pilot.dataset.cargo=cargoTotal(member.cargo).toFixed(2);
+    pilot.querySelector('.fleet-name')!.textContent=member.name;
+    pilot.querySelector('.fleet-role')!.textContent=
+      member.role+' · '+roundCargo(cargoTotal(member.cargo))+'/'+member.capacity;
+    const status=fleetShipStatus(state,member);
+    pilot.querySelector('.fleet-state')!.textContent=status;
+    for(const action of entry.querySelectorAll<HTMLButtonElement>('.fleet-order')){
+      const order=action.dataset.fleetOrder as FleetOrder;
+      const assigned=shipOrder(member)===order && member.mode!=='manual';
+      action.classList.toggle('active',assigned);
+      action.setAttribute('aria-pressed',String(assigned));
+      action.disabled=transitioning;
+      action.title=order==='mine'?'Mine, unload and automatically redeploy':
+        order==='return'?'Return to mothership and stay docked':
+        'Stop autonomous movement until reassigned';
+    }
   }
   builder.tick();
 }
@@ -243,12 +313,11 @@ $('fleet-resume').addEventListener('click',()=>{
   let resumed=0;
   for(const member of state.ships){
     if(member.id===state.activeShipId||member.mode!=='hold')continue;
-    member.mode='auto';
-    resumed++;
+    if(assignShipOrder(state,member.id,'mine')==='assigned')resumed++;
   }
   updateUI();
   persist();
-  notice(resumed?resumed+' idle ship(s) resumed':'No idle ships');
+  notice(resumed?resumed+' ship(s) sent mining':'No idle ships to dispatch');
 });
 
 // Phaser handles normal keyboard input, but a native button can keep focus

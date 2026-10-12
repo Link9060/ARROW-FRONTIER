@@ -1,13 +1,21 @@
 # ARROW: FRONTIER
 > **A persistent 2D space exploration, mining, fleet automation, economy, and civilization-building game within Project ARROW.**
 
-**Status:** Playable browser prototype v0.6.2 (dual side hangars); major planned features remain unimplemented  
+**Status:** Playable browser prototype v0.6.3 (independent fleet operations); major planned features remain unimplemented  
 **Document:** Master game design README, version 0.1  
 **Parent ecosystem:** Project ARROW / Resonant Assist  
 **Game:** ARROW: FRONTIER (AF)  
 **Core experience:** Build a mobile civilization, pilot ships manually, automate fleets with game-native RAVIN logic, explore and trade across star systems, and optionally enter a shared multiplayer multiverse.
 
 > This README is a **design specification**, not a statement that these systems are already implemented. Sections distinguish **agreed direction**, **proposed implementation**, and **open decisions**. Numbers and sample names are placeholders for balancing.
+
+## v0.6.3 · Autonomous Fleet Missions
+
+**Mine / Return / Hold** controls now live beside each ship in Fleet. Docked ships can be dispatched without manually launching or switching into them. A continuous Mine order sends a ship out, mines ore, returns at capacity, unloads, waits briefly, and redeploys automatically. Storage-full and ore-exhausted states are visible and do not silently cancel the mining order. The Fleet panel shows individual cargo, orders and exact operating state.
+
+Other automated ships **keep moving during the player's docking and undocking animations**. They also use physical north/south-side departure and docking paths rather than teleporting between a hangar bay and space. Waypoint progress and reserved berths are saved, and manually taking control of a ship mid-airlock is blocked.
+
+See [the Fleet operations and test specification](docs/FRONTIER-V0.6.3-FLEET-OPERATIONS.md). Automation is local to the player's browser and capped offline simulation; no paid inference or always-on server is required.
 
 ## v0.6.2 · Dual Hangars and Central Modules
 
