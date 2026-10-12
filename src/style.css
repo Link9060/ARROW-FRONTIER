@@ -1,537 +1,269 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap');
-
+/* FRONTIER / ARROW DESIGN SYSTEM
+   One canvas. One active context. Minimal surfaces and consistent rhythm. */
 :root {
-  font-family: 'Space Grotesk', 'Helvetica Neue', sans-serif;
-  color: #e4edf8;
-  background: #05070b;
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
+  color-scheme:dark;
+  --void:#050506;
+  --panel:rgba(17,17,19,.94);
+  --raised:#222225;
+  --ink:#f1f1f0;
+  --sub:#a5a5a8;
+  --muted:#727276;
+  --hair:rgba(255,255,255,.105);
+  --strong:rgba(255,255,255,.25);
+  --round:16px;
+  font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  font-synthesis:none;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+  background:var(--void);color:var(--ink);
 }
-
-* { box-sizing: border-box; }
-html, body, #app { width: 100%; height: 100%; margin: 0; overflow: hidden; }
-button { font: inherit; cursor: pointer; }
-button:disabled { cursor: not-allowed; opacity: .44; }
-button:focus-visible { outline: 2px solid #b6dfff; outline-offset: 3px; }
-#game, #grain { position: fixed; inset: 0; }
-#game canvas { display: block; }
-#grain { pointer-events: none; z-index: 1; opacity: .28; background: radial-gradient(circle at 75% 43%, transparent 0, rgba(0, 0, 0, .3) 74%); }
-.topbar { position: fixed; inset: 0 0 auto; height: 76px; z-index: 10; display: flex; align-items: center; justify-content: space-between; gap: 22px; padding: 0 29px; background: linear-gradient(180deg, rgba(5, 7, 11, .95), rgba(5, 7, 11, .65)); border-bottom: 1px solid rgba(195, 220, 243, .1); }
-.brand { display: flex; align-items: center; gap: 13px; min-width: 265px; }
-.brand-icon { font-size: 42px; font-weight: 300; color: #e9f5ff; line-height: 1; }
-.brand strong, .brand em { display: block; letter-spacing: .19em; font-style: normal; }
-.brand strong { font-size: 14px; font-weight: 700; }
-.brand em { font-family: 'DM Mono', monospace; color: #748ba4; font-size: 9px; margin-top: 5px; letter-spacing: .16em; }
-.version { color: #556a80; }
-.sector, .eyebrow, .section-heading, .metric, .resource, .control, .footer, .ghost, .footnote, .connection, .fleet-state, .intro-mark, .start-content small { font-family: 'DM Mono', 'Courier New', monospace; }
-.sector { font-size: 10px; color: #7189a3; letter-spacing: .12em; }
-.separator { margin: 0 12px; color: #324258; }
-.connection { color: #81a6b2; margin-left: 16px; }
-.ghost { padding: 12px 16px; font-size: 10px; letter-spacing: .13em; color: #c7d8e8; background: rgba(24, 34, 48, .6); border: 1px solid rgba(195, 220, 243, .2); white-space: nowrap; }
-.ghost span { margin-left: 12px; }
-.ghost:hover, .secondary:hover { background: #1b2e43; }
-.panel { position: fixed; z-index: 9; top: 91px; left: 18px; bottom: 66px; width: 330px; padding: 22px; overflow-y: auto; background: rgba(8, 13, 20, .92); border: 1px solid rgba(184, 206, 228, .22); box-shadow: 0 10px 45px rgba(0, 0, 0, .43); backdrop-filter: blur(18px); scrollbar-width: thin; scrollbar-color: #263950 transparent; }
-.eyebrow { letter-spacing: .2em; font-size: 9px; color: #748ca4; }
-.panel h1 { font-size: 37px; line-height: .99; margin: 20px 0 10px; letter-spacing: -.075em; font-weight: 600; }
-.panel h1 span { color: #859cb7; }
-.intro { color: #8297ab; font-size: 12px; line-height: 1.7; max-width: 270px; margin: 12px 0 0; }
-.divider { border-top: 1px solid #223044; margin: 20px 0; }
-.section-heading { display: flex; justify-content: space-between; gap: 8px; color: #e6eef7; font-size: 10px; font-weight: 500; letter-spacing: .08em; margin-bottom: 16px; }
-.section-heading span { color: #6f849d; font-size: 9px; text-align: right; }
-.metric { display: flex; justify-content: space-between; gap: 8px; color: #7f96ae; letter-spacing: .06em; font-size: 11px; margin: 12px 0 10px; }
-.metric strong { color: #e8f3ff; font-weight: 500; }
-.storage-track { height: 3px; background: #26384b; margin-bottom: 12px; overflow: hidden; }
-.storage-track > div { height: 100%; width: 0%; transition: width .2s; background: #d9eaf9; }
-.resource { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 8px 0; font-size: 11px; color: #849cb3; }
-.resource > span { display: flex; align-items: center; gap: 10px; }
-.resource strong { color: #dce8f6; font-weight: 500; font-size: 11px; }
-.ore-dot { display: block; height: 7px; width: 7px; background: #a6b4c7; transform: rotate(45deg); }
-.ore-dot.copper { background: #85939e; border: 1px solid #aab3bf; }
-.ship-name { display: block; font-size: 15px; letter-spacing: .04em; margin-bottom: 20px; font-weight: 500; }
-.fleet { display: grid; gap: 7px; }
-.fleet-ship { display: flex; align-items: center; justify-content: space-between; width: 100%; background: #0d1520; border: 1px solid #263446; padding: 13px 11px; text-align: left; color: #c1d0df; gap: 8px; transition: border-color .16s, background .16s; }
-.fleet-ship:hover { border-color: #a3b8c9; }
-.fleet-ship.selected { background: #192a3e; border-color: #a6c1de; }
-.fleet-name { font-size: 11px; font-weight: 600; }
-.fleet-state { font-size: 8px; color: #7c93a9; white-space: nowrap; }
-.actions { display: grid; grid-template-columns: 1fr; gap: 8px; margin-top: 13px; }
-.primary, .secondary { display: flex; justify-content: space-between; align-items: center; border: 1px solid #cbd9e7; padding: 13px 14px; background: #e7f0fa; color: #0a111b; font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 500; letter-spacing: .1em; }
-.primary:not(:disabled):hover { background: #fff; }
-.secondary { background: transparent; color: #d8e6f3; border-color: #405267; }
-.secondary.ready { border-color: #c6dceb; }
-.control { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; gap: 10px; color: #7a91a9; font-size: 10px; }
-kbd { display: inline-block; padding: 5px 7px; min-width: 65px; text-align: center; background: #162336; color: #c8d8e7; font: inherit; font-size: 9px; }
-.footnote { font-size: 9px; color: #526a82; line-height: 1.7; border-top: 1px solid #263548; margin-top: 20px; padding-top: 14px; }
-.center-crosshair { position: fixed; inset: 50% auto auto 50%; transform: translate(-50%, -50%); opacity: .15; font: 20px 'DM Mono', monospace; pointer-events: none; color: #dce8f6; z-index: 3; }
-.footer { position: fixed; bottom: 0; left: 0; right: 0; height: 46px; z-index: 10; display: flex; justify-content: space-between; gap: 12px; align-items: center; background: rgba(5, 8, 13, .96); border-top: 1px solid #273447; padding: 0 24px; color: #70859e; font-size: 9px; letter-spacing: .1em; }
-.footer #mission-text { color: #c3d2e1; }
-.reset { background: transparent; color: #72869a; border: none; font: inherit; letter-spacing: inherit; white-space: nowrap; }
-.reset:hover { color: white; }
-#toast { position: fixed; z-index: 25; bottom: 74px; left: 50%; transform: translate(-50%, 10px); opacity: 0; transition: .2s ease; pointer-events: none; background: rgba(13, 23, 35, .94); border: 1px solid #7a9bb9; padding: 16px 20px; color: #deecfa; font: 10px 'DM Mono', monospace; letter-spacing: .09em; text-align: center; max-width: calc(100% - 24px); }
-#toast.visible { opacity: 1; transform: translate(-50%, 0); }
-.start-overlay { position: fixed; inset: 0; z-index: 20; background: radial-gradient(ellipse at center, rgba(19, 32, 48, .97), #05070b 66%); display: flex; align-items: center; justify-content: center; text-align: center; transition: opacity .4s ease; }
-.start-overlay.hidden { opacity: 0; pointer-events: none; }
-.start-content { max-width: 560px; padding: 28px; }
-.intro-mark { font-size: 76px; color: #e6f0fa; line-height: 1; margin-bottom: 34px; }
-.start-content h2 { font-size: clamp(47px, 7vw, 88px); letter-spacing: -.085em; line-height: .94; font-weight: 600; margin: 24px 0; }
-.start-content h2 span { color: #849ab3; }
-.start-content p { font-size: 14px; line-height: 1.8; color: #9eb1c5; max-width: 430px; margin: 0 auto 30px; }
-.start-btn { display: flex; margin: 0 auto 24px; min-width: 220px; }
-.start-content small { display: block; color: #647c95; font-size: 9px; letter-spacing: .17em; }
-@media (max-width: 1000px) {
-  .sector { display: none; }
+*,*::before,*::after{box-sizing:border-box}
+html,body,#app{margin:0;height:100%;width:100%;overflow:hidden}
+button,input,select{font:inherit}
+button{cursor:pointer}
+button:disabled{cursor:not-allowed;opacity:.3}
+button:focus-visible,select:focus-visible{outline:2px solid #fff;outline-offset:4px}
+#game{position:fixed;inset:0;background:radial-gradient(ellipse at center,#0f0f10,#050506)}
+#game canvas{display:block;touch-action:none}
+.interface{position:relative;z-index:1;pointer-events:none}
+.interface>*,.nav{pointer-events:auto}
+.nav{
+  position:fixed;z-index:30;left:24px;right:24px;top:17px;height:56px;
+  border-radius:16px;background:rgba(12,12,13,.83);
+  border:1px solid var(--hair);backdrop-filter:blur(24px);
+  display:flex;align-items:center;gap:28px;padding:0 14px 0 18px;
 }
-@media (max-width: 670px) {
-  .topbar { height: 58px; padding: 0 12px; }
-  .brand { min-width: 0; }
-  .brand-icon { font-size: 33px; }
-  .ghost { padding: 10px; font-size: 9px; }
-  .ghost span { display: none; }
-  .panel { top: 70px; left: 8px; width: min(246px, 70vw); bottom: 55px; padding: 14px; }
-  .panel h1 { font-size: 28px; }
-  .footer { height: 44px; padding: 0 12px; }
-  .footer > span:first-child { display: none; }
-  .center-crosshair { display: none; }
+.identity{display:flex;align-items:center;gap:12px;white-space:nowrap}
+.arrow-symbol,.start-mark{
+  font-weight:600;display:grid;place-items:center;border-radius:8px;
+  border:1px solid var(--strong);color:white;line-height:1
 }
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+.arrow-symbol{width:30px;height:30px;font-size:20px}
+.identity-name{font-weight:720;letter-spacing:.13em;font-size:12px}
+.identity-name span{font-weight:400;letter-spacing:.07em;color:var(--sub)}
+.location{margin:auto;display:flex;gap:7px;align-items:center;font-size:11px;letter-spacing:.11em;color:#e6e6e5;white-space:nowrap}
+.location-secondary{color:#77777a}
+.location-dot{width:5px;height:5px;background:#efefee;border-radius:50%;margin-right:7px}
+.nav-actions{display:flex;align-items:center;gap:5px}
+.nav-button{border:0;background:transparent;color:#b3b3b6;min-height:36px;padding:0 14px;border-radius:9px;font-size:12px;font-weight:500;display:flex;align-items:center;gap:12px;white-space:nowrap;transition:background .16s,color .16s}
+.nav-button:hover,.nav-button[aria-expanded="true"]{background:#29292c;color:white}
+.nav-button.subtle{color:#747477}
+.shortcut{color:#79797c;font-family:ui-monospace,monospace;font-size:10px}
+.hud-surface{
+  background:rgba(15,15,17,.81);border:1px solid var(--hair);
+  backdrop-filter:blur(20px);border-radius:15px;
+  box-shadow:0 15px 40px #0005
 }
-
-/* ---- MOTHERSHIP EXPANSION / 0.2 ---- */
-.top-actions { display: flex; gap: 9px; align-items: center; }
-.builder-trigger { border-color: #7e9db6; color: #ecf7ff; }
-.ore-dot.alloy { background: #eef5ff; box-shadow: 0 0 9px #9cb7d1aa; }
-.build-link { display: flex; justify-content: space-between; gap: 10px; width: 100%; background: rgba(159, 194, 227, .07); color: #c4d9e8; border: 1px solid #39516a; padding: 12px; font: 9px 'DM Mono', monospace; letter-spacing: .06em; margin-top: 14px; text-align: left; }
-.build-link:hover { background: rgba(159, 194, 227, .18); border-color: #b9d6f2; }
-.build-link.fleet-resume { margin-top: 9px; color: #8aa2b9; }
-.builder-overlay { position: fixed; z-index: 18; top: 88px; right: 18px; bottom: 59px; left: 365px; overflow: auto; border: 1px solid #536c85; background: linear-gradient(145deg, rgba(14, 25, 39, .98), rgba(6, 11, 18, .99) 68%); box-shadow: 0 18px 90px #000b; backdrop-filter: blur(22px); padding: 27px; scrollbar-color: #39526c transparent; }
-.builder-overlay.hidden { display: none; }
-.builder-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 18px; }
-.builder-top h2 { font-size: clamp(30px, 3.6vw, 52px); font-weight: 600; letter-spacing: -.065em; line-height: 1.02; margin: 14px 0 10px; }
-.builder-top h2 span { color: #91abc5; }
-.builder-top p { margin: 0; color: #92a6bb; font-size: 12px; line-height: 1.7; max-width: 540px; }
-.builder-close { width: 38px; height: 38px; border: 1px solid #54708a; flex-shrink: 0; background: #142235; color: #e3effc; font: 20px 'DM Mono', monospace; }
-.builder-close:hover { background: #28415b; }
-.engineering-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; border: 1px solid #30465e; background: #30465e; margin: 24px 0 25px; }
-.engineering-stats > div { background: #101d2d; padding: 13px; }
-.engineering-stats small { font: 9px 'DM Mono', monospace; letter-spacing: .07em; color: #869cb3; display: block; margin-bottom: 9px; }
-.engineering-stats strong { font: 23px 'Space Grotesk', sans-serif; font-weight: 500; }
-.builder-workspace { display: grid; grid-template-columns: minmax(300px, 1.25fr) minmax(225px, .75fr); gap: 23px; }
-.builder-label { display: flex; align-items: center; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin-bottom: 13px; color: #d7e7f7; letter-spacing: .13em; font: 10px 'DM Mono', monospace; }
-.builder-label span { color: #6c849c; font-size: 8px; letter-spacing: .04em; }
-.room-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 5px; padding: 18px; border: 1px solid #344b64; background: radial-gradient(ellipse at 48% 50%, #142437, #0a111d); }
-.module-cell { position: relative; display: flex; justify-content: center; align-items: center; flex-direction: column; min-width: 0; aspect-ratio: 1.07; border: 1px dashed #31465b; background: #0b1622; color: #546a7f; transition: border-color .13s, background .13s, transform .13s; }
-.module-cell.connected { border-color: #627d96; background: #17283b; color: #b7cee4; border-style: dashed; }
-.module-cell:hover { border-color: #e4f1ff; background: #243b54; }
-.module-cell.occupied { border-style: solid; background: #1d3348; color: #e3f1ff; }
-.module-cell.offline { background: #101b27; color: #7d92a8; border-color: #415569; }
-.module-cell.focused { box-shadow: 0 0 0 2px #c4e4ff; border-color: #e6f6ff; }
-.module-symbol { font: 12px 'DM Mono', monospace; letter-spacing: .05em; }
-.module-level { color: #7f99b1; font: 8px 'DM Mono', monospace; margin-top: 5px; }
-.module-plus { font: 22px 'DM Mono', monospace; }
-.builder-legend { display: flex; gap: 14px; margin: 12px 0 30px; flex-wrap: wrap; color: #728ba3; font: 9px 'DM Mono', monospace; }
-.room-palette { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-.blueprint { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 10px; align-items: center; padding: 15px 11px; background: #101d2c; color: #d6e6f5; border: 1px solid #34506a; text-align: left; min-height: 91px; }
-.blueprint:hover, .blueprint.active { border-color: #cee4f9; background: #20374e; }
-.blueprint-code { display: grid; place-items: center; padding: 9px 6px; font: 10px 'DM Mono', monospace; color: #e3eefb; border: 1px solid #63809c; }
-.blueprint-title { font-size: 12px; font-weight: 500; }
-.blueprint-cost { grid-column: 1 / -1; color: #93abc1; font: 9px 'DM Mono', monospace; }
-.builder-secondary { min-width: 0; }
-.room-details, .production-card { border: 1px solid #344b61; background: #101c2b; padding: 17px; margin-bottom: 25px; }
-.detail-kicker { font: 9px 'DM Mono', monospace; letter-spacing: .12em; color: #86a2ba; }
-.detail-title { font-size: 22px; font-weight: 500; margin: 13px 0 8px; letter-spacing: -.04em; }
-.detail-copy { font-size: 12px; line-height: 1.7; color: #a7bad0; margin: 10px 0; }
-.detail-copy.muted { color: #71879d; }
-.detail-info { font: 10px 'DM Mono', monospace; border-top: 1px solid #2e4359; padding-top: 12px; margin-top: 12px; color: #bfd4e5; }
-.builder-action { display: flex; width: 100%; margin-top: 10px; text-align: left; line-height: 1.5; min-height: 42px; }
-.builder-back { font: 9px 'DM Mono', monospace; color: #abc6dc; background: transparent; padding: 14px 0 0; border: 0; }
-.builder-back:hover { color: white; }
-.production-card .resource { font-size: 10px; }
-.production-card .divider { margin: 13px 0; }
-.builder-hint { border-top: 1px solid #263b51; margin-top: 12px; padding-top: 12px; color: #7188a0; font: 10px 'DM Mono', monospace; line-height: 1.7; }
-.fabricator-ship { width: 100%; padding: 12px; background: #14283d; color: #eaf3ff; border: 1px solid #5b7590; margin-bottom: 14px; font: 11px 'DM Mono', monospace; }
-.fabricator-upgrade { border-top: 1px solid #263b50; padding: 13px 0; }
-.fabricator-label { display: block; font-size: 10px; line-height: 1.6; font-weight: 500; }
-.fabricator-cost { display: block; color: #8aa4bd; margin-top: 6px; font: 9px 'DM Mono', monospace; }
-body:has(.builder-overlay:not(.hidden)) .panel { pointer-events: none; opacity: .55; }
-@media (max-width: 1150px) {
-  .builder-overlay { left: 16px; right: 16px; }
-  .builder-workspace { grid-template-columns: minmax(280px, 1fr) minmax(260px, .8fr); }
+.flight-hud,.interior-hud{position:fixed;left:24px;top:96px;padding:19px 19px 17px;width:265px}
+.hud-meta{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:9px;letter-spacing:.12em;font-weight:650;color:#88888c}
+.hud-meta span:last-child{color:#b7b7b8}
+.ship-row{display:flex;align-items:center;justify-content:space-between;gap:9px;margin-top:15px}
+.ship-row h1,.interior-hud h1{font-size:20px;letter-spacing:-.045em;font-weight:610;line-height:1.2;margin:0}
+.ship-row>span{font-size:10px;color:#87878b}
+.ship-status{display:flex;justify-content:space-between;gap:10px;font-size:12px;margin-top:23px;color:var(--sub)}
+.ship-status strong{font-size:12px;color:white;font-weight:550}
+.meter{height:3px;background:#414144;border-radius:10px;overflow:hidden;margin-top:10px}
+.meter>div{width:0;height:100%;background:#f1f1f0;border-radius:10px;transition:width .2s}
+.ship-subdata{display:flex;gap:23px;margin-top:12px;font-size:11px;color:#8a8a8d}
+.ship-subdata strong{color:#ededed;margin-left:7px;font-weight:550}
+.context-tip{color:#8c8c8e;line-height:1.6;font-size:11px;margin:19px 0 0}
+.interior-hud{display:none}
+.interior-hud h1{font-size:21px;margin:17px 0 4px}
+.interior-hud h1 span{color:#7e7e81;font-weight:420}
+#hangar-summary{font-size:12px;color:var(--sub);margin:3px 0 20px}
+.interior-actions{display:grid;grid-template-columns:1fr;gap:7px}
+.solid-button,.line-button{
+  height:44px;border-radius:10px;display:flex;align-items:center;
+  justify-content:space-between;gap:14px;padding:0 15px;
+  font-size:12px;font-weight:570;white-space:nowrap;
+  transition:background .15s,transform .15s,border-color .15s
 }
-@media (max-width: 760px) {
-  .builder-overlay { padding: 17px; }
-  .builder-workspace { grid-template-columns: 1fr; }
-  .builder-top h2 { font-size: 37px; }
-  .room-grid { padding: 10px; }
+.solid-button{border:1px solid #f1f1f0;background:#eeeeed;color:#101011}
+.solid-button:not(:disabled):hover{background:white;transform:translateY(-1px)}
+.solid-button span{font-size:17px;font-weight:400}
+.line-button{border:1px solid var(--strong);background:#222225;color:#f0f0f0;justify-content:center}
+.line-button:hover{background:#2e2e31;border-color:#aaa}
+.action-bar{
+  position:fixed;bottom:27px;left:50%;transform:translateX(-50%);
+  z-index:12;display:flex;align-items:center;gap:15px;padding:8px 8px 8px 20px;
+  background:rgba(17,17,18,.92);border:1px solid var(--hair);border-radius:16px;
+  backdrop-filter:blur(20px);box-shadow:0 18px 56px #0008
 }
-@media (max-width: 670px) {
-  .builder-overlay { top: 59px; bottom: 44px; left: 0; right: 0; padding: 16px; }
-  .engineering-stats { grid-template-columns: repeat(2, 1fr); }
-  .room-palette { grid-template-columns: 1fr 1fr; }
-  .top-actions { gap: 6px; }
-  .builder-trigger { font-size: 9px; }
+.action-label{min-width:195px;display:grid;gap:4px;font-size:11px;color:#c1c1c1;line-height:1.25}
+.eyebrow{font-size:9px;font-weight:650;letter-spacing:.13em;color:#8e8e91}
+.action-bar .solid-button{min-width:100px;justify-content:center}
+.action-bar #launch-btn:disabled,.action-bar #dock-btn:disabled{display:none}
+.action-bar:has(#dock-btn:disabled) #launch-btn,.action-bar:has(#launch-btn:disabled) #dock-btn{display:flex}
+.camera-tools{
+  position:fixed;right:24px;bottom:26px;
+  display:none;align-items:center;gap:5px;
+  background:rgba(17,17,18,.92);border:1px solid var(--hair);
+  padding:6px;border-radius:12px;backdrop-filter:blur(20px)
 }
-
-
-/* =============================================================
- * FRONTIER v0.3: information hierarchy, readable UI, dock-only
- * interior and compact persistent controls.
- * ============================================================= */
-:root { --frontier-bg: #060b12; --frontier-panel: rgba(9, 17, 28, .94); --frontier-border: #354c62; }
-body { background: #04080d; }
-.topbar { height: 72px; padding: 0 24px; gap: 20px; background: linear-gradient(180deg, rgba(5,10,17,.98), rgba(5,10,17,.88)); border-bottom-color: rgba(153,185,212,.2); }
-.brand { min-width: 223px; gap: 12px; }
-.brand-icon { font-size: 38px; line-height: .8; }
-.brand strong { font-size: 15px; letter-spacing: .22em; }
-.brand em { font-size: 10px; margin-top: 8px; letter-spacing: .14em; }
-.top-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: nowrap; gap: 8px; }
-.top-actions .ghost { padding: 13px 16px; min-height: 43px; background: #0c1724; font-size: 11px; letter-spacing: .06em; }
-.top-actions .ghost span { opacity: .7; margin-left: 14px; }
-.top-actions .ghost:hover, .top-actions .ghost.is-active,
-.top-actions .ghost.available:hover { background: #1c344c; border-color: #aecbe4; color: white; }
-.top-actions #builder-btn[aria-disabled="true"] { color: #7a8a9b; }
-.sector { display: block; white-space: nowrap; font-size: 11px; letter-spacing: .09em; color: #9cb4cb; }
-.sector-dot { display:inline-block; width: 6px; height: 6px; background: #d1e5f8; border-radius:50%; margin-right: 9px; box-shadow: 0 0 10px #8dbcf25c; }
-.flight-panel { position: fixed; z-index: 8; top: 94px; left: 22px; width: 302px; max-height: calc(100vh - 265px); padding: 22px 23px 19px; background: var(--frontier-panel); border: 1px solid var(--frontier-border); box-shadow: 0 18px 55px #0007; backdrop-filter: blur(18px); overflow-y: auto; scrollbar-width: thin; scrollbar-color: #476079 transparent; }
-.panel-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.flight-panel .eyebrow { font-size: 10px; letter-spacing: .12em; color: #93a9bf; }
-.ship-status { display: inline-flex; align-items: center; gap: 6px; background: #173149; color: #bce2f7; padding: 6px 8px; border: 1px solid #4b718e; font: 9px 'DM Mono',monospace; letter-spacing: .04em; white-space: nowrap; }
-.ship-heading { display: flex; align-items: center; gap: 16px; padding: 21px 0 12px; }
-.ship-glyph { color: #dceeff; font-size: 27px; transform: rotate(-32deg); line-height: 1; }
-.ship-heading h1 { font-size: 25px; margin: 0; line-height: 1.1; font-weight: 600; letter-spacing: -.035em; }
-.ship-type { font: 11px 'DM Mono',monospace; letter-spacing: .07em; color: #8faac3; margin-top: 7px; }
-.panel-divider { height: 1px; width: 100%; background: #32465b; margin: 13px 0; }
-.flight-panel .data-row, .command-block .data-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin: 16px 0 11px; font: 11px 'DM Mono',monospace; color: #91a7bb; }
-.flight-panel .data-row strong, .command-block .data-row strong { color: #e6f3ff; font-size: 11px; font-weight: 500; text-align: right; }
-.flight-panel .storage-track { height: 5px; margin: 3px 0 12px; }
-.cargo-split { display: flex; justify-content: space-between; color: #9fb3c7; font: 10px 'DM Mono',monospace; }
-.cargo-split strong { color: #f0f8ff; font-size: 12px; margin-left: 5px; }
-.panel-tip { color: #aec2d6; font-size: 12px; line-height: 1.7; min-height: 38px; }
-.link-action { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; padding: 13px 15px; margin-top: 17px; border: 1px solid #6a8ba9; background: #122638; color: #e3f2ff; font: 11px 'DM Mono',monospace; letter-spacing: .05em; text-align:left; }
-.link-action:hover { background: #21415c; border-color: #c9e4fb; }
-.flight-signal { z-index: 3; pointer-events: none; position: fixed; right: 26px; top: 96px; display: flex; align-items: center; gap: 12px; font: 10px 'DM Mono',monospace; color: #8da9c4; letter-spacing: .14em; }
-.signal-cross { font-size: 19px; line-height: 1; color: #bfd8ef; }
-.flight-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; position: fixed; z-index: 10; bottom: 74px; left: 22px; width: 302px; padding: 0; }
-.flight-actions button { min-height: 50px; padding: 12px; font-size: 10px; gap: 7px; line-height: 1.35; }
-.flight-actions .secondary.ready { border-color: #d8edff; background: #21384e; }
-.key-hints { position: fixed; bottom: 76px; right: 25px; z-index: 3; display: flex; flex-wrap: wrap; align-items: center; justify-content: end; gap: 8px 17px; max-width: calc(100vw - 360px); color: #9bb1c7; font: 10px 'DM Mono',monospace; letter-spacing: .05em; pointer-events: none; }
-.key-hints span { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
-.key-hints kbd { border: 1px solid #49647c; background: #0d1d2a; min-width: 0; padding: 6px 7px; font-size: 10px; color: #e2effe; }
-.footer { height: 52px; padding: 0 22px; border-top-color: #263d52; font-size: 10px; background: #050a11ee; }
-.footer #mission-text { color: #c0d7ec; font-size: 10px; }
-#toast { font-size: 11px; letter-spacing: .05em; z-index: 55; }
-.command-overlay { position: fixed; z-index: 19; top: 88px; right: 22px; bottom: 65px; left: 342px; background: linear-gradient(145deg,#101f30f9,#07111dfc); border: 1px solid #62829f; box-shadow: 0 19px 70px #000c; padding: 30px; overflow-y: auto; scrollbar-color: #42617e transparent; }
-.command-overlay.hidden { display: none; }
-.overlay-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; padding-bottom: 24px; border-bottom: 1px solid #314b63; }
-.overlay-header h2 { font-size: clamp(34px, 4vw, 53px); font-weight: 600; letter-spacing: -.065em; margin: 15px 0 12px; line-height: 1; }
-.overlay-header h2 span { color: #9ab4cb; }
-.overlay-header p { max-width: 550px; font-size: 13px; line-height: 1.65; color: #93adc5; margin: 0; }
-.overlay-close { width: 44px; height: 44px; flex-shrink: 0; background: #13263a; color: #e5f2ff; border: 1px solid #587996; font: 22px 'DM Mono',monospace; }
-.overlay-close:hover { background: #284562; }
-.command-content { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 18px; margin-top: 24px; }
-.command-block { background: #0b1726; border: 1px solid #2f485e; padding: 23px; min-width: 0; }
-.block-heading { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; font: 10px 'DM Mono',monospace; color: #e7f4ff; letter-spacing: .05em; padding-bottom: 16px; margin-bottom: 12px; border-bottom: 1px solid #30465c; }
-.block-heading strong { font-weight: 500; }
-.block-heading span { font-size: 9px; color: #7896b0; }
-.command-block .storage-track { height: 6px; }
-.inventory-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; margin: 19px 0; }
-.inventory-grid > div { padding: 13px 10px; border: 1px solid #35506a; background: #102235; }
-.inventory-grid small { display: block; color: #8da8c2; font: 9px 'DM Mono',monospace; line-height: 1.3; white-space: nowrap; }
-.inventory-grid strong { display:block; color: #eff7ff; font-size: 20px; font-weight: 500; padding-top: 11px; }
-.command-block .power-data { padding-top: 15px; border-top: 1px solid #30465c; }
-.command-block .fleet { gap: 10px; }
-.command-block .fleet-ship { padding: 16px; min-height: 70px; border-color: #36536c; background: #132438; }
-.command-block .fleet-ship.selected { background: #223c53; border-color: #b4d4ee; }
-.command-block .fleet-name { display: block; font: 15px 'Space Grotesk',sans-serif; color: #edf7ff; }
-.command-block .fleet-role { display: block; font: 10px 'DM Mono',monospace; margin-top: 7px; color: #8aa6bd; }
-.command-block .fleet-state { font-size: 10px; }
-.block-note { margin: 12px 0 0; font-size: 12px; line-height: 1.65; color: #7895ac; }
-.command-block #fleet-resume { margin-top: 13px; }
-.builder-overlay { left: 22px; top: 87px; right: 22px; bottom: 65px; max-width: unset; padding: 28px 32px; }
-.builder-top h2 { font-size: clamp(35px,3.5vw,52px); }
-.builder-top .eyebrow, .builder-label { font-size: 11px; }
-.builder-top p { font-size: 13px; }
-.builder-workspace { grid-template-columns: minmax(380px, 1.2fr) minmax(270px,.8fr); }
-.room-grid { gap: 7px; padding: 17px; }
-.module-symbol { font-size: 14px; }
-.module-level { font-size: 10px; }
-.blueprint-title { font-size: 13px; }
-.blueprint-cost, .detail-info { font-size: 11px; }
-.detail-copy { font-size: 13px; }
-.builder-secondary .resource { font-size: 12px; }
-body:has(.command-overlay:not(.hidden)) .flight-panel,
-body:has(.builder-overlay:not(.hidden)) .flight-panel { opacity: .25; pointer-events: none; }
-body:has(.command-overlay:not(.hidden)) .flight-actions,
-body:has(.builder-overlay:not(.hidden)) .flight-actions { opacity: .25; pointer-events: none; }
-body:has(.command-overlay:not(.hidden)) .key-hints,
-body:has(.builder-overlay:not(.hidden)) .key-hints { opacity: 0; }
-@media (max-width: 1150px) {
-  .sector { display: none; }
-  .command-overlay { left: 22px; }
+.camera-tools button{border:0;background:transparent;border-radius:7px;min-width:34px;height:33px;color:#d7d7d8;font-size:16px}
+.camera-tools button:hover{background:#303033}
+.camera-tools #recenter-btn{font-size:11px;padding:0 9px}
+.camera-zoom{font-size:10px;color:#99999d;margin:0 5px;min-width:30px;text-align:right}
+.mobile-flight{display:none}
+.side-panel{
+  position:fixed;right:24px;top:89px;bottom:24px;width:340px;z-index:26;
+  background:rgba(19,19,21,.97);border:1px solid var(--hair);
+  border-radius:16px;overflow-y:auto;overscroll-behavior:contain;
+  scrollbar-width:thin;scrollbar-color:#525255 transparent;
+  backdrop-filter:blur(26px);
+  padding:26px 23px;
+  box-shadow:0 20px 65px #000a;
+  transform:translateX(calc(100% + 35px));
+  opacity:0;visibility:hidden;pointer-events:none;
+  transition:transform .22s ease,opacity .22s ease,visibility .22s;
 }
-@media (max-width: 900px) {
-  .command-content { grid-template-columns: 1fr; }
-  .builder-workspace { grid-template-columns: 1fr; }
-  .key-hints { max-width: calc(100vw - 330px); }
+.side-panel.open{transform:translateX(0);opacity:1;visibility:visible;pointer-events:auto}
+.panel-header{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.panel-header h2{font-size:32px;font-weight:620;letter-spacing:-.07em;margin:8px 0 0}
+.close-button{width:34px;height:34px;border:1px solid var(--hair);border-radius:9px;background:#2a2a2d;color:#ddd;font-size:22px;font-weight:300;line-height:1}
+.close-button:hover{background:#3b3b3e}
+.panel-description{font-size:12px;line-height:1.55;color:#929296;max-width:270px;margin:19px 0 27px}
+.section-head{display:flex;justify-content:space-between;gap:6px;align-items:center;margin:22px 0 12px;padding-top:17px;border-top:1px solid var(--hair)}
+.section-head h3{font-size:10px;font-weight:650;letter-spacing:.12em;color:#d6d6d6;margin:0}
+.section-head>span{font-size:10px;color:#9d9da0;font-variant-numeric:tabular-nums}
+.fleet-list{display:grid;gap:6px}
+.fleet-ship{
+  width:100%;padding:15px 13px;background:#262628;border:1px solid transparent;
+  border-radius:10px;display:flex;justify-content:space-between;gap:10px;
+  align-items:center;text-align:left;color:white
 }
-@media (max-width: 700px) {
-  .topbar { height: 60px; padding: 0 11px; gap: 7px; }
-  .brand { min-width: 0; gap: 8px; }
-  .brand-icon { font-size: 29px; }
-  .brand strong { font-size: 12px; }
-  .brand em { font-size: 8px; margin-top: 5px; }
-  .top-actions { gap: 4px; }
-  .top-actions .ghost { min-height: 35px; padding: 9px 8px; font-size: 9px; }
-  .top-actions .ghost span { display: none; }
-  .top-actions #save-btn { display: none; }
-  .flight-panel { top: 70px; left: 9px; padding: 13px 14px; width: min(258px, 66vw); max-height: calc(100vh - 185px); }
-  .panel-heading .eyebrow { font-size: 9px; }
-  .ship-status { font-size: 8px; padding: 4px; }
-  .ship-heading { padding: 13px 0 8px; }
-  .ship-heading h1 { font-size: 20px; }
-  .ship-type { font-size: 9px; }
-  .flight-panel .data-row { margin: 12px 0 8px; font-size: 9px; }
-  .flight-panel .data-row strong { font-size: 9px; }
-  .cargo-split { font-size: 9px; }
-  .panel-tip { font-size: 11px; }
-  .flight-panel .link-action { font-size: 9px; }
-  .flight-signal { display: none; }
-  .flight-actions { left: 9px; bottom: 58px; width: min(340px, calc(100vw - 18px)); gap: 5px; }
-  .flight-actions button { min-height: 43px; font-size: 9px; }
-  .key-hints { display: none; }
-  .footer { height: 45px; padding: 0 10px; }
-  .footer > span:first-child { display: none; }
-  .footer #mission-text { font-size: 8px; letter-spacing: 0; max-width: 75%; }
-  .footer .reset { font-size: 9px; }
-  .command-overlay, .builder-overlay { top: 61px; right: 0; bottom: 46px; left: 0; padding: 17px; }
-  .command-block { padding: 16px; }
-  .overlay-header h2 { font-size: 35px; }
-  .overlay-header p { font-size: 12px; }
-  .room-grid { gap: 4px; padding: 8px; }
-  .module-symbol { font-size: 11px; }
-  .module-level { font-size: 8px; }
+.fleet-ship.selected{border-color:#b7b7b7;background:#303033}
+.fleet-ship:hover{background:#353538}
+.fleet-identity{display:grid;gap:5px}
+.fleet-name{font-size:13px;font-weight:590}
+.fleet-role{font-size:10px;color:#9e9ea2}
+.fleet-state{color:#bdbdc0;font-size:9px;text-align:right}
+.text-button{display:flex;justify-content:space-between;align-items:center;gap:10px;background:transparent;border:0;border-bottom:1px solid var(--hair);color:#dededf;padding:14px 1px;font-size:12px;width:100%;text-align:left}
+.text-button:hover{color:white}
+.text-button span{font-size:17px}
+.resource-list{display:grid;margin-top:17px;gap:0}
+.resource-list>div,.systems-details>span{display:flex;align-items:center;justify-content:space-between;padding:10px 1px;color:#a8a8ab;font-size:12px;border-bottom:1px solid #2d2d30}
+.resource-list strong,.systems-details strong{font-weight:580;color:white;font-variant-numeric:tabular-nums}
+.fine-print{font-size:10px;color:#717175;line-height:1.7;margin-top:25px}
+.module-palette{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.blueprint{
+  display:flex;flex-direction:column;gap:7px;min-height:80px;
+  border:1px solid var(--hair);border-radius:11px;
+  padding:12px;background:#272729;color:#dfdfdf;text-align:left
 }
-@media (prefers-reduced-motion: reduce) {
-  .flight-panel, .command-overlay, .builder-overlay { transition: none; }
+.blueprint:hover,.blueprint.active{border-color:#bebebf;background:#363638}
+.blueprint-code{font-size:9px;color:#a7a7ab;letter-spacing:.12em}
+.blueprint-title{font-size:12px;font-weight:550}
+.blueprint-cost{font-size:10px;color:#aaa;line-height:1.35;margin-top:auto}
+.deck-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:5px}
+.module-cell{aspect-ratio:1;min-width:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:3px;background:#272729;border:1px solid #3b3b3e;border-radius:7px;color:#a3a3a6}
+.module-cell.occupied{background:#e5e5e4;color:#19191b;border-color:#e5e5e4}
+.module-cell.occupied.offline{opacity:.5}
+.module-cell.connected{border-style:dashed;border-color:#a9a9aa}
+.module-cell.focused{outline:2px solid #fff;outline-offset:2px}
+.module-cell:hover{border-color:#fff}
+.module-symbol{font-size:9px;font-weight:650}
+.module-level{font-size:8px}
+.module-plus{font-size:16px}
+.room-details{margin-top:15px}
+.detail-kicker{font-size:9px;letter-spacing:.1em;color:#8c8c8f;text-transform:uppercase}
+.detail-title{font-size:19px;font-weight:580;letter-spacing:-.035em;margin:11px 0 8px}
+.detail-copy{font-size:11px;line-height:1.6;color:#a1a1a4;margin:8px 0}
+.detail-info{font-size:10px;color:#ccc;margin:13px 0}
+.builder-action{margin-top:9px;width:100%;display:flex;justify-content:space-between;padding:12px;border-radius:8px;border:1px solid #777;background:#28282b;color:#fff;text-align:left;font-size:11px}
+.builder-action:disabled{opacity:.35}
+.builder-back{background:transparent;border:0;color:#ccc;font-size:11px;margin-top:13px}
+.fabricator-panel{font-size:12px}
+.fabricator-ship{width:100%;padding:12px;background:#28282a;border:1px solid #555;color:#fff;border-radius:8px}
+.fabricator-upgrade{padding:10px 0;border-bottom:1px solid var(--hair)}
+.fabricator-label,.fabricator-cost{display:block;line-height:1.6;font-size:11px}
+.fabricator-cost{font-size:10px;color:#9c9ca0}
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.18);pointer-events:none;opacity:0;transition:opacity .2s;z-index:15}
+#toast{
+  position:fixed;bottom:110px;left:50%;transform:translate(-50%,10px);
+  background:#eeeded;color:#131315;border-radius:10px;z-index:48;
+  font-size:12px;font-weight:530;padding:12px 18px;max-width:calc(100vw - 20px);
+  opacity:0;pointer-events:none;transition:opacity .22s,transform .22s;
+  box-shadow:0 12px 36px #0008;text-align:center
 }
-
-
-/* v0.3 builder layout final pass: catalog alongside the deck grid */
-.builder-secondary .room-palette { margin: 0 0 24px; }
-.builder-details-label { padding-top: 18px; border-top: 1px solid #314b63; }
-.builder-workspace .room-grid { gap: 5px; padding: 12px; }
-.builder-workspace .module-cell { aspect-ratio: 1.45; }
-.builder-workspace .builder-legend { margin-bottom: 8px; }
-@media (max-width: 900px) {
- .builder-secondary .room-palette { grid-template-columns: repeat(2,minmax(0,1fr)); }
+#toast.visible{opacity:1;transform:translate(-50%,0)}
+.start-overlay{
+  position:fixed;inset:0;background:radial-gradient(ellipse at 50% 36%,#181819,#070708 70%);
+  z-index:55;display:flex;align-items:center;justify-content:center;text-align:center;
+  transition:opacity .55s ease,visibility .55s;
 }
-
-
-/* ================================================================
-   FRONTIER 0.4 / CINEMATIC PHYSICAL MOTHERSHIP
-   Live interior artwork remains the canvas. Engineering is a drawer.
-   ================================================================ */
-#game, #game canvas {
-  touch-action: none;
-  overscroll-behavior: contain;
+.start-overlay.hidden{opacity:0;pointer-events:none;visibility:hidden}
+.start-content{padding:20px;max-width:480px}
+.start-mark{width:52px;height:52px;font-size:34px;margin:0 auto 28px}
+.start-content .eyebrow{color:#b1b1b4;letter-spacing:.2em;font-size:10px}
+.start-content h2{font-size:clamp(54px,6vw,88px);line-height:.98;font-weight:610;letter-spacing:-.09em;margin:23px 0}
+.start-content h2 span{color:#868689}
+.start-content p{color:#99999c;font-size:13px;line-height:1.7;margin:0 0 30px}
+.start-content .solid-button{min-width:220px;margin:0 auto;justify-content:space-between}
+.start-version{display:block;margin-top:22px;font-size:9px;letter-spacing:.12em;color:#747479}
+body[data-frontier-view="interior"] .flight-hud,body[data-frontier-view="transition"] .flight-hud,
+body[data-frontier-view="interior"] .action-bar,body[data-frontier-view="transition"] .action-bar{display:none}
+body[data-frontier-view="interior"] .interior-hud{display:block}
+body[data-frontier-view="interior"] .camera-tools{display:flex}
+body[data-frontier-view="transition"] .nav-actions button{pointer-events:none;opacity:.3}
+body[data-frontier-view="transition"] #toast{bottom:65px}
+body[data-frontier-view="interior"] .interior-hud{top:96px}
+/* Avoid heavy sci-fi outlines: open panels never obscure the vessel's center
+   if there is room to the left of the inspector. */
+@media(max-width:1100px){
+  .location-secondary{display:none}
+  .nav{left:16px;right:16px}
+  .flight-hud,.interior-hud{left:16px;top:89px}
+  .side-panel{right:16px;top:89px;bottom:16px}
 }
-#game canvas { width: 100%; height: 100%; }
-.hangar-hud, .cinematic-status { display: none; }
-body[data-frontier-view="interior"] .hangar-hud {
-  display: block;
-  position: fixed;
-  z-index: 12;
-  top: 94px;
-  left: 22px;
-  width: 286px;
-  max-height: calc(100vh - 180px);
-  overflow-y: auto;
-  scrollbar-width: thin;
-  background: rgba(7, 14, 24, .92);
-  border: 1px solid #45637e;
-  box-shadow: 0 14px 52px #000a;
-  backdrop-filter: blur(16px);
-  padding: 22px;
-}
-.hangar-hud h2 {
-  font-size: 31px;
-  letter-spacing: -.06em;
-  font-weight: 600;
-  line-height: 1;
-  margin: 16px 0 25px;
-}
-.hangar-hud h2 span { display: block; color: #9cbad4; }
-.hangar-hud .eyebrow { color: #adc4d9; font-size: 10px; }
-.hangar-hud .data-row {
-  display:flex; align-items:center; justify-content:space-between; gap:9px;
-  border-bottom: 1px solid #283e53;
-  padding-bottom: 13px;
-  margin-bottom: 14px;
-  color:#9db1c6;
-  font:10px 'DM Mono',monospace;
-}
-.hangar-hud .data-row strong { text-align:right; color:#eff7ff; font-weight:500; font-size:11px; }
-.hangar-note {
-  color:#8da6bd;
-  font-size:12px;
-  line-height:1.7;
-  margin:17px 0 22px;
-}
-#hangar-build-btn { font-size:10px; margin:8px 0 11px; padding:13px 12px; }
-#hangar-launch-btn { width:100%; padding:15px 13px; font-size:10px; }
-.hangar-navigation-label {
-  color:#b9d2e7; font:10px 'DM Mono',monospace;
-  letter-spacing:.08em; padding-top:21px; margin:18px 0 10px;
-  border-top:1px solid #30485f;
-}
-.hangar-camera-controls { display:grid; grid-template-columns:50px 1fr 50px; gap:6px; }
-.hangar-camera-controls button {
-  border:1px solid #53748f; background:#152b40; color:#e4f3ff; padding:12px 6px;
-  font:12px 'DM Mono',monospace;
-}
-.hangar-camera-controls button:hover { background:#2c4a64; border-color:#d8edff; }
-.hangar-gesture-hint {
-  font:9px 'DM Mono',monospace; letter-spacing:.04em;
-  line-height:1.65; margin-top:11px; color:#8ca4b8;
-}
-body[data-frontier-view="interior"] .flight-panel,
-body[data-frontier-view="interior"] .flight-actions,
-body[data-frontier-view="interior"] .key-hints,
-body[data-frontier-view="interior"] .flight-signal,
-body[data-frontier-view="transition"] .flight-panel,
-body[data-frontier-view="transition"] .flight-actions,
-body[data-frontier-view="transition"] .key-hints,
-body[data-frontier-view="transition"] .flight-signal { display:none; }
-body[data-frontier-view="transition"] .cinematic-status {
-  display:block;
-  position:fixed;top:88px;left:50%;transform:translateX(-50%);
-  z-index:30;pointer-events:none;
-  background:#0a1a29df;border:1px solid #6588a8;
-  color:#d5edff;text-align:center;padding:12px 16px;
-  font:11px 'DM Mono',monospace;letter-spacing:.12em;
-  white-space:nowrap;max-width:calc(100vw - 30px);
-}
-body[data-frontier-view="interior"] .top-actions #builder-btn {
-  background:#20394f;border-color:#90b8d6;color:#f4faff;
-}
-body[data-frontier-view="interior"] .flight-signal { display:none; }
-body[data-frontier-view="interior"] .builder-overlay:not(.hidden) {
-  position:fixed;left:auto;right:18px;top:86px;bottom:65px;
-  width:min(400px, 32vw);max-width:none;z-index:24;
-  border-color:#5c809d;box-shadow:-20px 0 65px #000a;
-  padding:20px;overflow-y:auto;backdrop-filter:blur(20px);
-}
-body[data-frontier-view="interior"] .builder-overlay .builder-top { gap:10px; }
-body[data-frontier-view="interior"] .builder-overlay .builder-top h2 {
-  font-size:26px;line-height:1.03; margin:12px 0 9px;
-}
-body[data-frontier-view="interior"] .builder-overlay .builder-top p {
-  font-size:11px;line-height:1.6;
-}
-body[data-frontier-view="interior"] .builder-overlay .engineering-stats {
-  grid-template-columns:repeat(2,minmax(0,1fr));margin:16px 0;
-}
-body[data-frontier-view="interior"] .builder-overlay .engineering-stats > div { padding:10px; }
-body[data-frontier-view="interior"] .builder-overlay .engineering-stats strong { font-size:17px; }
-body[data-frontier-view="interior"] .builder-overlay .builder-workspace {
-  display:flex;flex-direction:column;gap:20px;
-}
-body[data-frontier-view="interior"] .builder-overlay .room-grid {
-  padding:7px;gap:4px;
-}
-body[data-frontier-view="interior"] .builder-overlay .module-cell { aspect-ratio:1.3; }
-body[data-frontier-view="interior"] .builder-overlay .module-symbol { font-size:10px; }
-body[data-frontier-view="interior"] .builder-overlay .room-palette {
-  grid-template-columns:repeat(2,minmax(0,1fr));
-}
-body[data-frontier-view="interior"] .builder-overlay .blueprint {
-  padding:9px;gap:5px;min-height:75px;
-}
-body[data-frontier-view="interior"] .builder-overlay .blueprint-title { font-size:11px; }
-body[data-frontier-view="interior"] .builder-overlay .blueprint-cost { font-size:9px;line-height:1.5; }
-body[data-frontier-view="interior"] .builder-overlay .builder-label {
-  font-size:10px;line-height:1.6;
-}
-body[data-frontier-view="interior"]:has(.builder-overlay:not(.hidden)) .hangar-hud {
-  opacity:.86;
-}
-@media (max-width: 1100px) {
-  body[data-frontier-view="interior"] .builder-overlay:not(.hidden) { width:min(375px,40vw); }
-}
-@media (max-width: 850px) {
-  body[data-frontier-view="interior"] .hangar-hud { width:218px;padding:14px;left:10px;top:71px; }
-  .hangar-hud h2 { font-size:25px; }
-  .hangar-hud .hangar-note { font-size:11px; }
-  body[data-frontier-view="interior"] .builder-overlay:not(.hidden) { width:min(345px,46vw);top:68px;right:8px;bottom:55px;padding:14px; }
-}
-@media (max-width: 650px) {
-  body[data-frontier-view="interior"] .hangar-hud {
-    top:auto;left:8px;bottom:53px;width:min(270px,calc(100vw - 16px));
-    max-height:42vh;padding:12px 13px;
+@media(max-width:760px){
+  .nav{top:8px;left:8px;right:8px;height:52px;padding:0 9px 0 10px;border-radius:13px;gap:5px}
+  .identity{gap:6px}
+  .arrow-symbol{width:26px;height:26px;font-size:18px}
+  .identity-name{font-size:10px}
+  .identity-name span{display:none}
+  .location{font-size:9px;letter-spacing:.04em}
+  .location-dot{margin-right:1px}
+  .nav-actions{gap:0}
+  .nav-button{padding:0 8px;min-height:33px;font-size:11px}
+  .shortcut,.nav-button.subtle{display:none}
+  .flight-hud,.interior-hud{top:71px;left:9px;width:min(240px,calc(100vw - 18px));padding:13px;border-radius:12px}
+  .ship-row h1,.interior-hud h1{font-size:18px}
+  .ship-row{margin-top:10px}
+  .ship-status{margin-top:14px}
+  .context-tip{margin-top:11px}
+  .interior-hud{max-height:185px;overflow-y:auto}
+  .interior-actions{grid-template-columns:1fr 1fr;gap:5px}
+  .interior-actions button{min-width:0;padding:0 9px;font-size:10px}
+  .action-bar{bottom:14px;left:50%;min-width:min(300px,calc(100vw - 18px));padding:6px 6px 6px 12px;gap:8px}
+  .action-label{min-width:0;flex:1;font-size:10px}
+  .action-bar .solid-button{min-width:80px;padding:0 12px;height:39px}
+  .camera-tools{right:9px;bottom:14px;padding:4px}
+  .camera-tools button{min-width:28px;height:29px;font-size:13px}
+  .camera-tools #recenter-btn{font-size:10px}
+  .camera-zoom{display:none}
+  .side-panel{right:0;left:auto;top:67px;bottom:0;width:min(365px,100vw);padding:22px 19px;border-radius:16px 0 0 0}
+  #toast{bottom:95px;font-size:11px}
+  body[data-frontier-view="flight"] .mobile-flight{
+    position:fixed;bottom:89px;left:10px;right:10px;display:flex;
+    justify-content:space-between;align-items:flex-end;pointer-events:auto
   }
-  body[data-frontier-view="interior"] .hangar-hud h2 { font-size:22px;margin:9px 0 12px; }
-  body[data-frontier-view="interior"] .hangar-hud .eyebrow { font-size:9px; }
-  body[data-frontier-view="interior"] .hangar-hud .data-row { margin-bottom:7px;padding-bottom:7px; }
-  body[data-frontier-view="interior"] .hangar-hud .hangar-note { display:none; }
-  body[data-frontier-view="interior"] #hangar-build-btn { margin:7px 0;padding:10px; }
-  body[data-frontier-view="interior"] #hangar-launch-btn { padding:10px; }
-  body[data-frontier-view="interior"] .hangar-navigation-label { margin:10px 0 7px;padding-top:10px; }
-  body[data-frontier-view="interior"] .hangar-camera-controls button { padding:8px 5px; }
-  body[data-frontier-view="interior"] .hangar-gesture-hint { font-size:8px;margin-top:7px; }
-  body[data-frontier-view="interior"] .builder-overlay:not(.hidden) {
-    top:auto;bottom:47px;left:auto;right:0;
-    width:100%;height:43vh;max-height:43vh;padding:13px 16px;
-    border-left:0;border-right:0;box-shadow:0 -17px 55px #000d;
+  .touch-pad{display:grid;justify-items:center;gap:3px}
+  .touch-pad-middle{display:flex;gap:3px}
+  .touch-pad button,.mine-button{
+    touch-action:none;user-select:none;-webkit-user-select:none;
+    border:1px solid #6d6d72;background:rgba(29,29,31,.85);color:white;
+    width:49px;height:43px;border-radius:11px;font-size:21px;backdrop-filter:blur(12px)
   }
-  body[data-frontier-view="interior"]:has(.builder-overlay:not(.hidden)) .hangar-hud { display:none; }
-  body[data-frontier-view="transition"] .cinematic-status {
-    top:70px;font-size:9px;white-space:normal;width:90%;
-  }
+  .touch-pad button.pressed,.mine-button.pressed{background:#f2f2f1;color:#101010}
+  .mine-button{width:76px;height:64px;font-size:13px;font-weight:600;border-radius:32px}
 }
-
-
-/* Touchscreen interior: keep the ship visible above a compact command shelf. */
-.hangar-navigation-label { display:flex;justify-content:space-between;gap:10px; }
-.hangar-navigation-label strong { font-weight:500;color:#eff7ff; }
-@media (max-width:650px) {
-  body[data-frontier-view="interior"] .hangar-hud {
-    display:grid;
-    grid-template-columns:repeat(2,minmax(0,1fr));
-    align-items:center;
-    gap:7px;
-    bottom:53px;
-    padding:10px;
-    width:calc(100vw - 16px);
-    max-height:176px;
-    overflow:hidden;
-  }
-  body[data-frontier-view="interior"] .hangar-hud .eyebrow,
-  body[data-frontier-view="interior"] .hangar-hud h2,
-  body[data-frontier-view="interior"] .hangar-hud .data-row,
-  body[data-frontier-view="interior"] .hangar-hud .hangar-note,
-  body[data-frontier-view="interior"] .hangar-hud .hangar-gesture-hint {
-    display:none;
-  }
-  body[data-frontier-view="interior"] #hangar-build-btn,
-  body[data-frontier-view="interior"] #hangar-launch-btn {
-    margin:0;
-    min-height:42px;
-    padding:8px 7px;
-    font-size:9px;
-    line-height:1.2;
-    min-width:0;
-  }
-  body[data-frontier-view="interior"] .hangar-navigation-label {
-    grid-column:1/-1;
-    padding:5px 2px 0;
-    margin:0;
-    font-size:9px;
-    border:0;
-  }
-  body[data-frontier-view="interior"] .hangar-camera-controls {
-    grid-column:1/-1;
-    grid-template-columns:44px 1fr 44px;
-  }
-  body[data-frontier-view="interior"] .hangar-camera-controls button { padding:8px; }
+@media(max-width:380px){
+  .location{display:none}
+  .nav-actions{margin-left:auto}
+  .flight-hud{width:205px}
+  .ship-subdata{gap:12px}
+}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{transition-duration:0.01ms!important;animation-duration:0.01ms!important}
 }
