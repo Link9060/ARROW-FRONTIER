@@ -142,6 +142,15 @@ export class FlightScene extends Phaser.Scene {
     const zoomCss = this.interiorZoom() / this.deviceScale();
     return { x: HOME.x + rightPanelOffset / Math.max(.25, zoomCss), y: HOME.y };
   }
+  getCameraStatus(): { zoom: number; worldX: number; worldY: number } {
+    const camera=this.cameras.main;
+    return {
+      zoom: camera.zoom/this.deviceScale(),
+      worldX: camera.midPoint.x,
+      worldY: camera.midPoint.y,
+    };
+  }
+
   /** Device-independent camera sizes and safe layout on window resize. */
   refreshCameraZoom(): void {
     if (!this.cameras?.main) return;
@@ -496,8 +505,7 @@ export class FlightScene extends Phaser.Scene {
     const manualStep=Math.min(.05,Math.max(0,delta/1000));
     this.updateTouchNavigation();
     if(!this.controlsBlocked && this.mode!=='transition'){
-      if(Phaser.Input.Keyboard.JustDown(this.keys.E))this.launchOrDock();
-      if(Phaser.Input.Keyboard.JustDown(this.keys.Q))this.nextShip();
+      // E and Q are handled centrally in main.ts, including when UI buttons have focus.
       if(this.mode==='flight'){
         this.stepManual(manualStep);
         this.stepMining(manualStep);
