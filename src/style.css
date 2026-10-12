@@ -180,7 +180,7 @@ button:focus-visible,select:focus-visible{outline:2px solid #fff;outline-offset:
 .fabricator-cost{font-size:10px;color:#9c9ca0}
 .scrim{position:fixed;inset:0;background:rgba(0,0,0,.18);pointer-events:none;opacity:0;transition:opacity .2s;z-index:15}
 #toast{
-  position:fixed;bottom:110px;left:50%;transform:translate(-50%,10px);
+  position:fixed;top:88px;bottom:auto;left:50%;transform:translate(-50%,-8px);
   background:#eeeded;color:#131315;border-radius:10px;z-index:48;
   font-size:12px;font-weight:530;padding:12px 18px;max-width:calc(100vw - 20px);
   opacity:0;pointer-events:none;transition:opacity .22s,transform .22s;
@@ -243,7 +243,7 @@ body[data-frontier-view="interior"] .interior-hud{top:96px}
   .camera-tools #recenter-btn{font-size:10px}
   .camera-zoom{display:none}
   .side-panel{right:0;left:auto;top:67px;bottom:0;width:min(365px,100vw);padding:22px 19px;border-radius:16px 0 0 0}
-  #toast{bottom:95px;font-size:11px}
+  #toast{top:72px;bottom:auto;font-size:11px;max-width:80%;padding:9px 12px}
   body[data-frontier-view="flight"] .mobile-flight{
     position:fixed;bottom:89px;left:10px;right:10px;display:flex;
     justify-content:space-between;align-items:flex-end;pointer-events:auto
