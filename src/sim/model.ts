@@ -2,6 +2,15 @@ export type Ore = 'iron' | 'copper';
 export type ShipMode = 'manual' | 'auto' | 'hold';
 /** Long-lived orders are separate from which vessel the player is piloting. */
 export type FleetOrder = 'mine' | 'return' | 'hold';
+/** Serializable physical travel leg for non-player autonomous ships. */
+export interface FleetNavigation {
+  kind: 'launch' | 'dock';
+  side: 'north' | 'south';
+  berth: number;
+  step: number;
+  /** Persisted entry coordinate keeps long docking arcs stable across reloads. */
+  origin: Point;
+}
 export type RoomType = 'command' | 'reactor' | 'storage' | 'hangar' | 'refinery' | 'fabricator';
 export interface Point { x: number; y: number; }
 export interface Cargo { iron: number; copper: number; }
@@ -26,6 +35,8 @@ export interface Ship extends Point {
   order?: FleetOrder;
   /** Seconds of dock-side unloading / turnaround before the next sortie. */
   turnaround?: number;
+  /** Ship moves through real side airlock rather than teleporting. */
+  navigation?: FleetNavigation;
   angle: number;
   upgrades: { mining: number; cargo: number };
   /** Starting slot in the mothership hangar when docked. */
