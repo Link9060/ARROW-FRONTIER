@@ -53,7 +53,7 @@ export function assignShipOrder(state:GameState,id:string,order:FleetOrder):Flee
 export function switchShip(state:GameState,nextId:string):boolean {
   if(nextId===state.activeShipId)return false;
   const next=state.ships.find(ship=>ship.id===nextId);
-  if(!next)return false;
+  if(!next||next.navigation)return false;
   const previous=activeShip(state);
   if(previous.docked){
     previous.order='hold';
