@@ -282,4 +282,3 @@ export function buildMothershipArtwork(scene:Phaser.Scene,state:GameState,
   if(docked){doorLeft.x-=45;doorRight.x+=45;}
   return {roof,interior,doors,doorLeft,doorRight,doorCenterX};
 }
-}
