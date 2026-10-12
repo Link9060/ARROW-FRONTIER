@@ -267,3 +267,9 @@ body[data-frontier-view="interior"] .interior-hud{top:96px}
 @media(prefers-reduced-motion:reduce){
   *,*::before,*::after{transition-duration:0.01ms!important;animation-duration:0.01ms!important}
 }
+
+
+.gesture-tip{font-size:10px;color:#77777b;margin:13px 0 0;line-height:1.4}
+.reset-save{display:block;margin:20px 0 0;padding:8px 1px;color:#78787b;font-size:10px;border:0;background:transparent;text-align:left}
+.reset-save:hover{color:#dddddd}
+@media(max-width:760px){.gesture-tip{font-size:9px;margin-top:8px}}
