@@ -21,6 +21,11 @@ export const BUILDABLE: RoomType[] = ['storage', 'reactor', 'refinery', 'fabrica
 const DEFAULT_CAPACITY = 200;
 const MAX_LEVEL = 3;
 
+/** Construction mode is available only after the controlled ship has docked. */
+export function canEnterInterior(state: GameState): boolean {
+  return state.ships.some((ship) => ship.id === state.activeShipId && ship.docked);
+}
+
 export function capacityFor(rooms: Room[]): number {
   return DEFAULT_CAPACITY + rooms
     .filter((room) => room.type === 'storage')

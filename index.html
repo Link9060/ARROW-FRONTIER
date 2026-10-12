@@ -1,114 +1,150 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#05070b" />
-    <meta name="description" content="ARROW: FRONTIER. Build your mothership. Pilot your ships. Mine the stars." />
-    <title>ARROW: FRONTIER | First Flight</title>
-  </head>
-  <body>
-    <div id="app">
-      <div id="game" aria-label="Interactive 2D space mining game"></div>
-      <div id="grain" aria-hidden="true"></div>
-      <header class="topbar">
-        <div class="brand"><span class="brand-icon">◇</span><span><strong>ARROW</strong><em>FRONTIER <span class="version">/ 0.2.0</span></em></span></div>
-        <div class="sector">PRIVATE UNIVERSE <span class="separator">/</span> VESTA SYSTEM <span class="connection">● LOCAL SIMULATION</span></div>
-        <div class="top-actions"><button id="builder-btn" type="button" class="ghost builder-trigger">MOTHERSHIP <span>⌗</span></button><button id="save-btn" type="button" class="ghost">SAVE <span>↗</span></button></div>
-      </header>
-      <aside class="panel">
-        <div class="eyebrow">01 / COMMAND TERMINAL</div>
-        <h1>FIRST <span>FLIGHT.</span></h1>
-        <p class="intro">Your civilization begins with one mothership and a handful of asteroids.</p>
-        <div class="divider"></div>
-        <div class="section-heading">MOTHERSHIP <span>ARROW-01</span></div>
-        <div class="metric"><span>STORAGE</span><strong id="storage">0 / 400</strong></div>
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+  <meta name="theme-color" content="#05080d"/>
+  <meta name="description" content="ARROW: FRONTIER. Pilot, mine, build and command a persistent fleet."/>
+  <title>ARROW: FRONTIER | v0.3</title>
+</head>
+<body>
+<div id="app">
+  <div id="game" aria-label="Two-dimensional spacecraft exploration and mining game"></div>
+  <div id="grain" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-icon" aria-hidden="true">◇</span>
+      <span class="brand-word"><strong>ARROW</strong><em>FRONTIER <span class="version">/ 0.3.0</span></em></span>
+    </div>
+    <div class="sector"><span class="sector-dot"></span> PRIVATE UNIVERSE <span class="separator">/</span> VESTA EXPANSE</div>
+    <nav class="top-actions" aria-label="Game screens">
+      <button id="command-btn" class="ghost" type="button" aria-keyshortcuts="C">COMMAND <span>C</span></button>
+      <button id="builder-btn" class="ghost" type="button" aria-keyshortcuts="B" title="Dock your active ship to access the interior">INTERIOR <span>B</span></button>
+      <button id="save-btn" class="ghost save-button" type="button">SAVE <span>↗</span></button>
+    </nav>
+  </header>
+
+  <aside class="flight-panel" aria-label="Current ship flight status">
+    <div class="panel-heading">
+      <div class="eyebrow">01 / FLIGHT SYSTEMS</div>
+      <div id="ship-state" class="ship-status">DOCKED</div>
+    </div>
+    <div class="ship-heading"><span class="ship-glyph" aria-hidden="true">➤</span>
+      <div><h1 id="ship-name">ARROW-01</h1><div id="ship-class" class="ship-type">SCOUT / HYBRID</div></div>
+    </div>
+    <div class="panel-divider"></div>
+    <div class="data-row"><span>POSITION</span><strong id="ship-position">HANGAR</strong></div>
+    <div class="data-row"><span>CARGO HOLD</span><strong id="cargo">0 / 60</strong></div>
+    <div class="storage-track"><div id="cargo-fill"></div></div>
+    <div class="cargo-split">
+      <span>IRON <strong id="ship-iron">0</strong></span>
+      <span>COPPER <strong id="ship-copper">0</strong></span>
+    </div>
+    <div class="panel-divider"></div>
+    <div class="panel-tip" id="pilot-tip">Launch, approach an asteroid, then hold click to mine.</div>
+    <button id="quick-command-btn" class="link-action" type="button">OPEN FLEET COMMAND <span>↗</span></button>
+  </aside>
+
+  <div class="flight-signal" aria-hidden="true">
+    <span class="signal-cross">+</span>
+    <span>LOCAL SPACE / VESTA</span>
+  </div>
+  <div class="flight-actions" aria-label="Primary flight actions">
+    <button id="launch-btn" class="primary" type="button">LAUNCH SHIP <span>↗</span></button>
+    <button id="dock-btn" class="secondary" type="button">DOCK &amp; UNLOAD <span>↙</span></button>
+  </div>
+  <div class="key-hints" aria-label="Game keyboard shortcuts">
+    <span><kbd>WASD</kbd> MOVE</span><span><kbd>MOUSE</kbd> AIM</span>
+    <span><kbd>CLICK / SPACE</kbd> MINE</span><span><kbd>Q</kbd> SWITCH SHIP</span>
+    <span><kbd>E</kbd> LAUNCH / DOCK</span>
+  </div>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <footer class="footer">
+    <span>ARROW / SIMULATION 0.3</span><span id="mission-text">AWAITING FLIGHT COMMAND</span>
+    <button id="reset-btn" class="reset" type="button">RESET SAVE</button>
+  </footer>
+
+  <section id="command-overlay" class="command-overlay hidden" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="command-title">
+    <div class="overlay-header">
+      <div><div class="eyebrow">02 / STRATEGIC OPERATIONS</div><h2 id="command-title">FLEET <span>COMMAND.</span></h2>
+      <p>Live ship orders, mothership inventory, and production systems in one place.</p></div>
+      <button type="button" class="overlay-close" id="command-close" aria-label="Close fleet command">✕</button>
+    </div>
+    <div class="command-content">
+      <div class="command-block">
+        <div class="block-heading"><strong>MOTHERSHIP / ARROW-01</strong><span>STORAGE AND POWER</span></div>
+        <div class="data-row"><span>TOTAL STORAGE</span><strong id="storage">0 / 400</strong></div>
         <div class="storage-track"><div id="storage-fill"></div></div>
-        <div class="resource"><span><i class="ore-dot iron"></i>IRON</span><strong id="stored-iron">0</strong></div>
-        <div class="resource"><span><i class="ore-dot copper"></i>COPPER</span><strong id="stored-copper">0</strong></div>
-        <div class="resource"><span><i class="ore-dot alloy"></i>REFINED ALLOY</span><strong id="stored-alloy">0</strong></div>
-        <div class="resource"><span>GRID POWER</span><strong id="power-summary">7 / 22</strong></div>
-        <button type="button" id="builder-open-mini" class="build-link">⌗ OPEN MOTHERSHIP BUILDER <span>↗</span></button>
-        <div class="divider"></div>
-        <div class="section-heading">ACTIVE VESSEL <span id="ship-class">SCOUT</span></div>
-        <strong class="ship-name" id="ship-name">ARROW-01 / SCOUT</strong>
-        <div class="metric"><span>SHIP CARGO</span><strong id="cargo">0 / 60</strong></div>
-        <div class="storage-track"><div id="cargo-fill"></div></div>
-        <div class="resource"><span>FLIGHT STATE</span><strong id="ship-state">DOCKED</strong></div>
-        <div class="resource"><span>LOCATION</span><strong id="ship-position">HANGAR</strong></div>
-        <div class="divider"></div>
-        <div class="section-heading">FLEET CONTROL <span>RAVIN / LOCAL</span></div>
-        <div class="fleet" id="fleet"></div><button id="fleet-resume" class="build-link fleet-resume" type="button">↻ RESUME IDLE AUTOMATION</button>
-        <div class="actions">
-          <button id="launch-btn" class="primary" type="button">LAUNCH VESSEL <span>↗</span></button>
-          <button id="dock-btn" class="secondary" type="button">DOCK & UNLOAD <span>↙</span></button>
+        <div class="inventory-grid">
+          <div><small>RAW IRON</small><strong id="stored-iron">0</strong></div>
+          <div><small>RAW COPPER</small><strong id="stored-copper">0</strong></div>
+          <div><small>REFINED ALLOY</small><strong id="stored-alloy">0</strong></div>
         </div>
-        <div class="divider"></div>
-        <div class="section-heading">PILOT HANDBOOK <span>CONTROLS</span></div>
-        <div class="control"><kbd>W A S D</kbd><span>Thrust / move</span></div>
-        <div class="control"><kbd>MOUSE</kbd><span>Aim vessel</span></div>
-        <div class="control"><kbd>HOLD CLICK</kbd><span>Mine targeted asteroid</span></div>
-        <div class="control"><kbd>SPACE</kbd><span>Mine nearest asteroid</span></div>
-        <div class="control"><kbd>E</kbd><span>Launch / dock</span></div>
-        <div class="control"><kbd>Q</kbd><span>Switch ships</span></div>
-        <div class="control"><kbd>B</kbd><span>Mothership builder</span></div>
-        <div class="footnote">No RAVIN model tokens are consumed. Automation runs locally.</div>
-      </aside>
-      <div class="center-crosshair" aria-hidden="true"><span>+</span></div>
-      <div id="toast" role="status" aria-live="polite"></div>
-      <footer class="footer">
-        <span>ARROW / ENTERTAINMENT SYSTEM</span>
-        <span id="mission-text">AWAITING FLIGHT COMMAND</span>
-        <button id="reset-btn" class="reset" type="button">RESET SAVE</button>
-      </footer>
-      <section id="builder-overlay" class="builder-overlay hidden" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="builder-title">
-        <div class="builder-top">
-          <div><div class="eyebrow">02 / MOTHERSHIP ENGINEERING</div><h2 id="builder-title">BUILD YOUR <span>EMPIRE.</span></h2><p>Mine ore, add connected modules, balance power, and fabricate upgrades.</p></div>
-          <button type="button" class="builder-close" id="builder-close" aria-label="Close mothership builder">✕</button>
-        </div>
-        <div class="engineering-stats">
-          <div><small>REACTOR OUTPUT</small><strong id="builder-output">22</strong></div>
-          <div><small>ENERGY USED</small><strong id="builder-load">7</strong></div>
-          <div><small>POWER DEMAND</small><strong id="builder-demand">7</strong></div>
-          <div><small>MODULES</small><strong id="builder-count">4 / 24</strong></div>
-        </div>
-        <div class="builder-workspace">
-          <div class="builder-primary">
-            <div class="builder-label">MOTHERSHIP DECK PLAN <span>CLICK MODULES TO SELECT · EMPTY CELLS TO CONSTRUCT</span></div>
-            <div id="room-grid" class="room-grid" aria-label="Six by four mothership room construction grid"></div>
-            <div class="builder-legend"><span>□ OPEN CONNECTION</span><span>■ ONLINE MODULE</span><span>▧ UNPOWERED</span></div>
-            <div class="builder-label">MODULE CATALOG <span>SELECT BLUEPRINT</span></div>
-            <div class="room-palette" id="room-palette"></div>
-          </div>
-          <div class="builder-secondary">
-            <div class="builder-label">SELECTED SYSTEM</div>
-            <div id="room-details" class="room-details"></div>
-            <div class="builder-label">PRODUCTION NETWORK</div>
-            <div class="production-card">
-              <div class="resource"><span>IRON RESERVES</span><strong id="builder-iron">0</strong></div>
-              <div class="resource"><span>COPPER RESERVES</span><strong id="builder-copper">0</strong></div>
-              <div class="resource"><span>ALLOY RESERVES</span><strong id="builder-alloy">0</strong></div>
-              <div class="divider"></div>
-              <div class="resource"><span>REFINERY STATUS</span><strong id="refinery-status">NOT BUILT</strong></div>
-              <div class="resource"><span>ALLOY PRODUCED</span><strong id="refinery-produced">0</strong></div>
-              <div class="builder-hint">Refineries consume 2 iron + 1 copper to manufacture 1 alloy. No model API calls.</div>
-            </div>
-            <div class="builder-label">SHIP FABRICATION <span>SHIP MUST BE DOCKED</span></div>
-            <div id="fabricator-panel" class="production-card"></div>
-          </div>
-        </div>
-      </section>
-      <div id="start-overlay" class="start-overlay">
-        <div class="start-content">
-          <div class="intro-mark">◇</div>
-          <div class="eyebrow">PROJECT ARROW / ENTERTAINMENT MODE</div>
-          <h2>THE FRONTIER<br /><span>STARTS HERE.</span></h2>
-          <p>Launch from your mothership. Extract your first resources. Build the future, one expedition at a time.</p>
-          <button id="start-btn" class="primary start-btn" type="button">ENTER FRONTIER <span>↗</span></button>
-          <small>VERSION 0.2.0 · MOTHERSHIP EXPANSION</small>
-        </div>
+        <div class="data-row power-data"><span>GRID LOAD / CAPACITY</span><strong id="power-summary">7 / 22</strong></div>
+        <button type="button" id="builder-open-mini" class="link-action">ENTER MOTHERSHIP INTERIOR <span>↗</span></button>
+        <p class="block-note">Interior access requires docking your actively controlled ship.</p>
+      </div>
+      <div class="command-block">
+        <div class="block-heading"><strong>RAVIN FLEET NETWORK</strong><span>LOCAL AUTOMATION / ZERO API TOKENS</span></div>
+        <div class="fleet" id="fleet"></div>
+        <button id="fleet-resume" class="link-action" type="button">↻ RESUME IDLE SHIPS</button>
+        <p class="block-note">Select any ship to take manual control. Other ships continue their assigned tasks.</p>
       </div>
     </div>
-    <script type="module" src="/src/main.ts"></script>
-  </body>
+  </section>
+
+  <section id="builder-overlay" class="builder-overlay hidden" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="builder-title">
+    <div class="builder-top">
+      <div><div class="eyebrow">03 / DOCKED / MOTHERSHIP INTERIOR</div>
+      <h2 id="builder-title">MOTHERSHIP <span>INTERIOR.</span></h2>
+      <p>Only accessible while docked. Connect rooms, balance the power grid, and expand your civilization.</p></div>
+      <button type="button" class="builder-close" id="builder-close" aria-label="Exit mothership interior">✕</button>
+    </div>
+    <div class="engineering-stats">
+      <div><small>POWER OUTPUT</small><strong id="builder-output">22</strong></div>
+      <div><small>CURRENT LOAD</small><strong id="builder-load">7</strong></div>
+      <div><small>POWER DEMAND</small><strong id="builder-demand">7</strong></div>
+      <div><small>INSTALLED ROOMS</small><strong id="builder-count">4 / 24</strong></div>
+    </div>
+    <div class="builder-workspace">
+      <div class="builder-primary">
+        <div class="builder-label">MOTHERSHIP DECK PLAN <span>CHOOSE BLUEPRINT, THEN ADJACENT EMPTY CELL</span></div>
+        <div id="room-grid" class="room-grid" aria-label="Six by four mothership interior room construction grid"></div>
+        <div class="builder-legend"><span>□ OPEN CONNECTION</span><span>■ POWERED MODULE</span><span>▧ UNPOWERED</span></div>
+      </div>
+      <div class="builder-secondary">
+        <div class="builder-label">BLUEPRINT LIBRARY <span>SELECT MODULE TYPE</span></div>
+        <div class="room-palette" id="room-palette"></div>
+        <div class="builder-label builder-details-label">SELECTED MODULE</div>
+        <div id="room-details" class="room-details"></div>
+        <div class="builder-label">RESOURCE PROCESSING</div>
+        <div class="production-card">
+          <div class="resource"><span>IRON RESERVES</span><strong id="builder-iron">0</strong></div>
+          <div class="resource"><span>COPPER RESERVES</span><strong id="builder-copper">0</strong></div>
+          <div class="resource"><span>ALLOY RESERVES</span><strong id="builder-alloy">0</strong></div>
+          <div class="divider"></div>
+          <div class="resource"><span>REFINERY STATUS</span><strong id="refinery-status">NOT BUILT</strong></div>
+          <div class="resource"><span>ALLOY PRODUCED</span><strong id="refinery-produced">0</strong></div>
+          <div class="builder-hint">One alloy consumes two iron and one copper. No real RAVIN model requests.</div>
+        </div>
+        <div class="builder-label">SHIP FABRICATION <span>DOCKED SHIPS ONLY</span></div>
+        <div id="fabricator-panel" class="production-card"></div>
+      </div>
+    </div>
+  </section>
+
+  <div id="start-overlay" class="start-overlay">
+    <div class="start-content">
+      <div class="intro-mark">◇</div>
+      <div class="eyebrow">PROJECT ARROW / ENTERTAINMENT MODE</div>
+      <h2>YOUR UNIVERSE.<br/><span>YOUR FRONTIER.</span></h2>
+      <p>Pilot the fleet. Mine the stars. Dock and step inside your mothership to build something bigger.</p>
+      <button id="start-btn" class="primary start-btn" type="button">ENTER FRONTIER <span>↗</span></button>
+      <small>V 0.3.0 / PRIVATE UNIVERSE PROTOTYPE</small>
+    </div>
+  </div>
+</div>
+<script type="module" src="/src/main.ts"></script>
+</body>
 </html>

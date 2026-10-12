@@ -27,8 +27,9 @@ export function switchShip(state: GameState, nextId: string): boolean {
 export function launchShip(ship: Ship): boolean {
   if (!ship.docked) return false;
   ship.docked = false;
-  ship.x = HOME.x + 174;
-  ship.y = HOME.y + 14;
+  // Launch outside the physical mothership hull, not inside its exterior.
+  ship.x = HOME.x + 314;
+  ship.y = HOME.y + 15;
   ship.angle = 0;
   return true;
 }
@@ -118,6 +119,23 @@ export function runAutomation(state: GameState, seconds: number): void {
       extractOre(state, ship, target, ship.miningRate * seconds);
     }
   }
+}
+
+/**
+ * Process real elapsed wall-clock time for deterministic game systems.
+ * Unlike clamping the entire frame to 50 ms, this preserves production
+ * speed on lower frame rates and splits long frames for stable autopilot.
+ */
+export function advanceActiveSimulation(state: GameState, elapsedSeconds: number): number {
+  if (!Number.isFinite(elapsedSeconds) || elapsedSeconds <= 0) return 0;
+  const elapsed = Math.min(elapsedSeconds, 2);
+  let remaining = elapsed;
+  while (remaining > 0.00000001) {
+    const step = Math.min(0.05, remaining);
+    runAutomation(state, step);
+    remaining -= step;
+  }
+  return elapsed;
 }
 
 export function simulateOffline(state: GameState, elapsedSeconds: number): number {

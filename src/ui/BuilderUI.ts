@@ -1,6 +1,6 @@
 import { activeShip, roundCargo } from '../sim/engine';
 import {
-  BUILDABLE, canBuild, canUpgrade, canUpgradeShip, MODULES, powerReport,
+  BUILDABLE, canBuild, canEnterInterior, canUpgrade, canUpgradeShip, MODULES, powerReport,
   shipUpgradeCost, toggleRoom, upgradeCost, upgradeRoom, upgradeShip,
   buildRoom, roomOnline,
 } from '../sim/mothership';
@@ -60,6 +60,10 @@ export class BuilderUI {
   get isOpen(): boolean { return this.visible; }
   open(): void {
     if (this.visible) return;
+    if (!canEnterInterior(this.state)) {
+      this.notice('DOCK YOUR ACTIVE SHIP TO ACCESS MOTHERSHIP INTERIOR');
+      return;
+    }
     this.visible = true;
     get('builder-overlay').classList.remove('hidden');
     get('builder-overlay').setAttribute('aria-hidden', 'false');

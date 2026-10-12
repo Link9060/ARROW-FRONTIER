@@ -9,6 +9,12 @@
 
 > This README is a **design specification**, not a statement that these systems are already implemented. Sections distinguish **agreed direction**, **proposed implementation**, and **open decisions**. Numbers and sample names are placeholders for balancing.
 
+## v0.3 · Visual & Gameplay Refinement
+
+**Released direction:** Sharper Retina/high-density canvas rendering, a larger opaque arrow-shaped mothership exterior, a compact Flight HUD, separate Fleet Command (C), and a mothership Interior screen (B) **only while the controlled ship is docked**. Primary launch and dock controls remain visible. The game simulation advances with elapsed time, keeping refining and fleet missions consistent at low frame rates. New automated tests cover frame-rate consistency and interior permissions.
+
+See [v0.3 implementation notes](docs/V03-REFINEMENT.md) for details. This remains a local single-player prototype; the original long-term game design below includes planned, unimplemented features.
+
 ## Current playable implementation
 
 **v0.2 · Mothership Expansion (October 2026):** A browser-based Phaser prototype currently includes manual 2D ship piloting, asteroid mining, docking and cargo unloading, two ships with instant control switching, deterministic game-native RAVIN mining automation, versioned local saves with offline catch-up, a connected 6×4 mothership room builder, power priorities, expanded storage, ore-to-alloy refineries, and docked ship upgrades through a fabricator.

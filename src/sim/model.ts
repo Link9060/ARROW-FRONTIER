@@ -47,7 +47,8 @@ export interface GameState {
 }
 export const WORLD = { width: 2600, height: 1800 };
 export const HOME: Point = { x: 1300, y: 900 };
-export const DOCK_RADIUS = 190;
+// Includes the full silhouette of the upgraded arrow-shaped hull.
+export const DOCK_RADIUS = 280;
 export const MINE_RANGE = 275;
 export const OFFLINE_CAP_SECONDS = 2 * 60 * 60;
 export const ROOM_GRID = { columns: 6, rows: 4 };
