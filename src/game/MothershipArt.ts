@@ -1,229 +1,175 @@
 import Phaser from 'phaser';
-import type { GameState, RoomType } from '../sim/model';
-import { hangarCapacity, MAX_BERTHS, berthLocalPosition } from '../sim/hangar';
+import type { GameState, Room } from '../sim/model';
+import { HOME, ROOM_GRID } from '../sim/model';
+import { berthLocalPosition, hangarCapacity, MAX_BERTHS } from '../sim/hangar';
 import { MODULES, powerReport } from '../sim/mothership';
+import { CELL_SIZE, deckCellPoint } from './deckLayout';
 
 export interface MothershipArtwork {
-  roof: Phaser.GameObjects.Container;
-  interior: Phaser.GameObjects.Container;
+  roof:Phaser.GameObjects.Container;
+  interior:Phaser.GameObjects.Container;
 }
-
-type Vector = [number, number];
-function polygon(graphics: Phaser.GameObjects.Graphics, points: Vector[], fill: number,
-  stroke: number, width = 2, alpha = 1): void {
-  graphics.fillStyle(fill, alpha);
-  graphics.lineStyle(width, stroke, .9);
-  graphics.beginPath();
-  points.forEach(([x, y], i) => {
-    if (i === 0) graphics.moveTo(x, y);
-    else graphics.lineTo(x, y);
-  });
-  graphics.closePath();
-  graphics.fillPath();
-  graphics.strokePath();
+type XY=[number,number];
+const HULL:XY[]=[
+  [-554,-184],[-458,-193],[-311,-350],[-58,-339],
+  [283,-178],[568,0],[283,178],[-58,339],[-311,350],
+  [-458,193],[-554,184],[-444,0],
+];
+const INNER:XY[]=[
+  [-490,-157],[-409,-163],[-280,-299],[-76,-293],
+  [259,-145],[478,0],[259,145],[-76,293],
+  [-280,299],[-409,163],[-490,157],[-387,0],
+];
+function path(g:Phaser.GameObjects.Graphics,pts:XY[],color:number,stroke:number,w=2):void{
+  g.fillStyle(color,1);
+  g.lineStyle(w,stroke,.85);
+  g.beginPath();
+  pts.forEach(([x,y],i)=>{if(i===0)g.moveTo(x,y);else g.lineTo(x,y);});
+  g.closePath();g.fillPath();g.strokePath();
 }
-function text(scene: Phaser.Scene, parent: Phaser.GameObjects.Container, x: number, y: number,
-  message: string, size = 12, color = '#c9def0', origin = 0.5): void {
-  parent.add(scene.add.text(x, y, message, {
-    fontFamily: 'monospace', fontSize: size + 'px', color,
-    letterSpacing: 1, align: 'center',
-  }).setOrigin(origin));
+function label(scene:Phaser.Scene,container:Phaser.GameObjects.Container,
+  x:number,y:number,text:string,size=11,color='#bbbbbc'):void{
+  container.add(scene.add.text(x,y,text,{
+    fontFamily:'Inter, Arial, sans-serif',fontSize:size+'px',
+    color,align:'center',
+  }).setOrigin(.5));
 }
-
-const SHAPE: Vector[] = [
-  [-548,-200],[-445,-206],[-304,-350],[-45,-335],
-  [290,-176],[568,0],[290,176],[-45,335],
-  [-304,350],[-445,206],[-548,200],[-450,0],
-];
-const ARMOR: Vector[] = [
-  [-486,-154],[-393,-155],[-268,-294],[-80,-284],
-  [260,-125],[488,0],[260,125],[-80,284],
-  [-268,294],[-393,155],[-486,154],[-383,0],
-];
-
-const MODULE_LOCATIONS: Vector[] = [
-  [-411,-249],[-265,-251],[-119,-267],[26,-270],[171,-238],[312,-186],
-  [392,-95],[405,98],[322,196],[163,263],[12,269],[-130,264],
-  [-274,249],[-410,245],[-465,100],[-467,-97],
-  [-371,-8],[-335,-154],[-335,154],[345,0],
-];
-
-function drawRoom(scene: Phaser.Scene, container: Phaser.GameObjects.Container, roomType: RoomType,
-  x: number, y: number, level: number, powered: boolean): void {
-  const g = scene.add.graphics();
-  container.add(g);
-  const width = 119, height = 80;
-  g.fillStyle(powered ? 0x182c3e : 0x101925, 1);
-  g.lineStyle(1.5, powered ? 0x779dbd : 0x3b5165, .75);
-  g.fillRoundedRect(x-width/2, y-height/2, width, height, 7);
-  g.strokeRoundedRect(x-width/2, y-height/2, width, height, 7);
-  g.fillStyle(powered ? 0xc7dff3 : 0x6e8398, .28);
-  // Distinct working equipment, not just identical room boxes.
-  if (roomType === 'reactor') {
-    g.lineStyle(2, 0x91b7d6, .7);
-    g.strokeCircle(x, y-8, 24);
-    g.fillStyle(powered ? 0xb6dbfa : 0x364b5d, .5);
-    g.fillCircle(x, y-8, 12);
-    g.lineStyle(1, 0xe3f2ff, .55);
-    g.lineBetween(x-23,y-8,x+23,y-8);
-  } else if (roomType === 'storage') {
-    for (let i=0;i<3;i++){
-      g.fillStyle(0x537591,.35); g.fillRoundedRect(x-41+i*29,y-24,24,30,3);
-      g.lineStyle(1,0xa3bdd4,.65);g.strokeRoundedRect(x-41+i*29,y-24,24,30,3);
+function moduleTile(scene:Phaser.Scene,parent:Phaser.GameObjects.Container,
+  room:Room,online:boolean):void{
+  const {x,y}=deckCellPoint(room.x,room.y);
+  const g=scene.add.graphics();parent.add(g);
+  const w=CELL_SIZE.width-6,h=CELL_SIZE.height-7;
+  g.fillStyle(online?0x272729:0x19191a,1);
+  g.lineStyle(online?1.8:1,online?0xbebec0:0x555558,online?.95:.6);
+  g.fillRoundedRect(x-w/2,y-h/2,w,h,6);
+  g.strokeRoundedRect(x-w/2,y-h/2,w,h,6);
+  g.lineStyle(1,0x7a7a7c,.4);
+  g.lineBetween(x-w/2+12,y+4,x+w/2-12,y+4);
+  // Distinct interior equipment is drawn without sci-fi glowing outlines.
+  if(room.type==='reactor'){
+    g.lineStyle(1.8,0xe0e0e0,.7);
+    g.strokeCircle(x-37,y-10,12);
+    g.lineBetween(x-37,y-22,x-37,y+2);
+    g.lineBetween(x-49,y-10,x-25,y-10);
+  }else if(room.type==='storage'){
+    for(let i=0;i<3;i++){
+      g.lineStyle(1,0xbdbdbd,.65);
+      g.strokeRoundedRect(x-51+i*19,y-18,14,17,2);
     }
-  } else if (roomType === 'refinery') {
-    g.fillStyle(0x688fb0,.4);g.fillRoundedRect(x-42,y-19,82,21,3);
-    for(let i=0;i<4;i++){g.lineStyle(2,0xb5d0e5,.55);g.lineBetween(x-36+i*23,y-19,x-36+i*23,y+7);}
-  } else if (roomType === 'fabricator') {
-    g.lineStyle(3,0xa5c9e5,.75);
-    g.lineBetween(x-33,y+2,x-18,y-21);g.lineBetween(x-18,y-21,x+8,y-7);g.lineBetween(x+8,y-7,x+28,y-23);
-    g.fillStyle(0xe7f7ff,.7);g.fillCircle(x+28,y-23,6);
-  } else {
-    g.lineStyle(2,0x8cabc6,.65);
-    g.strokeRoundedRect(x-36,y-22,72,28,4);
-    g.lineBetween(x-19,y-22,x-19,y+6);
-    g.lineBetween(x+19,y-22,x+19,y+6);
+  }else if(room.type==='command'){
+    g.lineStyle(1,0xd9d9da,.65);
+    g.strokeRoundedRect(x-52,y-18,51,18,4);
+    g.lineBetween(x-37,y-18,x-37,y-1);
+  }else if(room.type==='refinery'){
+    g.lineStyle(2,0xbcbcbc,.7);
+    g.lineBetween(x-47,y-17,x-14,y-17);
+    g.lineBetween(x-47,y-12,x-14,y-12);
+  }else{
+    g.lineStyle(1,0xc4c4c5,.65);
+    g.strokeRoundedRect(x-51,y-18,37,18,3);
   }
-  text(scene,container,x,y+27, MODULES[roomType].code+' / '+level,10,powered?'#cae0f2':'#6f869b');
+  label(scene,parent,x+26,y-9,MODULES[room.type].code,11,online?'#e6e6e6':'#858585');
+  label(scene,parent,x,y+17,MODULES[room.type].title.toUpperCase()+'  '+room.level,8,online?'#b2b2b3':'#737376');
 }
 
-export function buildMothershipArtwork(scene: Phaser.Scene, state: GameState, homeX: number, homeY: number): MothershipArtwork {
-  const interior = scene.add.container(homeX,homeY).setDepth(7);
-  const deck = scene.add.graphics();
-  interior.add(deck);
+export function buildMothershipArtwork(scene:Phaser.Scene,state:GameState,
+  homeX=HOME.x,homeY=HOME.y):MothershipArtwork{
+  const interior=scene.add.container(homeX,homeY).setDepth(7);
+  const deck=scene.add.graphics();interior.add(deck);
+  path(deck,HULL,0x0b0b0d,0xc5c5c6,3);
+  path(deck,INNER,0x171719,0x5e5e60,1.5);
 
-  polygon(deck,SHAPE,0x0a1420,0x99bedc,4);
-  polygon(deck,ARMOR,0x112234,0x496b86,2);
-  // Walkway spine, engineering ribs, dimensional rails.
-  deck.fillStyle(0x172d3f,.86);
-  deck.fillRoundedRect(-512,-53,920,106,12);
-  deck.lineStyle(2,0x829fba,.55);
-  deck.strokeRoundedRect(-512,-53,920,106,12);
-  for(let i=0;i<12;i++){
-    const xx=-475+i*75;
-    deck.lineStyle(1,0x9fb6cb,.19);
-    deck.lineBetween(xx,-320,xx,320);
-  }
-  deck.lineStyle(3,0x6686a2,.4);
-  deck.lineBetween(-460,-242,270,-242);
-  deck.lineBetween(-460,242,270,242);
+  // The central hangar is a usable deck with open space, equipment and real bays.
+  deck.fillStyle(0x0a0a0c,1);
+  deck.lineStyle(2.8,0xb5b5b8,.92);
+  deck.fillRoundedRect(-283,-187,567,375,12);
+  deck.strokeRoundedRect(-283,-187,567,375,12);
+  deck.lineStyle(1,0x77777a,.14);
+  for(let x=-273;x<278;x+=35)deck.lineBetween(x,-179,x,181);
+  for(let y=-178;y<186;y+=35)deck.lineBetween(-275,y,276,y);
 
-  // Selected rooms occupy peripheral engineering spaces around the hangar.
-  const powered=powerReport(state).onlineIds;
-  const displayRooms=state.rooms.filter(room=>room.type!=='hangar');
-  for(let i=0;i<displayRooms.length && i<MODULE_LOCATIONS.length;i++){
-    const room=displayRooms[i];
-    const [x,y]=MODULE_LOCATIONS[i];
-    drawRoom(scene,interior,room.type,x,y,room.level,powered.has(room.id));
-  }
+  // Loading gantry and hangar entrance, deliberately readable at overview zoom.
+  deck.lineStyle(3,0xe0e0e0,.8);
+  deck.lineBetween(-275,-182,277,-182);
+  deck.lineBetween(-275,183,277,183);
+  deck.fillStyle(0x404044,.65);
+  deck.fillRoundedRect(-275,-171,12,345,3);
+  deck.fillRoundedRect(266,-171,12,345,3);
+  deck.lineStyle(2,0xa2a2a5,.75);
+  deck.lineBetween(73,-187,185,-187);
+  deck.lineBetween(73,-170,73,-149);
+  deck.lineBetween(185,-170,185,-149);
 
-  // Real hangar with floor markings, landing rail, crane gantry and parking.
-  const floor=scene.add.graphics();
-  interior.add(floor);
-  floor.fillStyle(0x0a1622,1);
-  floor.lineStyle(4,0x8db0cf,.95);
-  floor.fillRoundedRect(-278,-185,562,371,17);
-  floor.strokeRoundedRect(-278,-185,562,371,17);
-  floor.fillStyle(0x132a3d,1);
-  floor.fillRoundedRect(-259,-163,524,329,11);
-  floor.lineStyle(1,0x406583,.8);
-  floor.strokeRoundedRect(-259,-163,524,329,11);
-  // Exhaust and maintenance trenches.
-  for(let i=0;i<6;i++){
-    floor.lineStyle(2,0x65849f,.22);
-    floor.lineBetween(-255,-143+i*54,260,-143+i*54);
+  const capacity=Math.min(MAX_BERTHS,hangarCapacity(state));
+  for(let i=0;i<capacity;i++){
+    const p=berthLocalPosition(i);
+    deck.lineStyle(1.6,0xb6b6b8,.65);
+    deck.strokeRoundedRect(p.x-60,p.y-34,120,69,7);
+    deck.lineStyle(3,0xb8b8bb,.38);
+    deck.lineBetween(p.x-51,p.y-27,p.x-51,p.y+27);
+    deck.lineBetween(p.x+51,p.y-27,p.x+51,p.y+27);
+    label(scene,interior,p.x,p.y+46,'0'+(i+1),10,'#b8b8ba');
   }
-  floor.lineStyle(3,0x96b8d7,.7);
-  floor.lineBetween(-251,-179,250,-179);
-  floor.lineBetween(-251,177,250,177);
-  // Vertical gantry cranes and hanger service track.
-  floor.fillStyle(0x294861,.8);
-  floor.fillRoundedRect(-248,-152,13,298,5);
-  floor.fillRoundedRect(244,-152,13,298,5);
-  floor.lineStyle(2,0xc3d8eb,.7);
-  floor.lineBetween(-242,-152,252,-152);
-  floor.lineBetween(-242,146,252,146);
-  for(let i=0;i<11;i++){
-    floor.fillStyle(0x9dc5e5,i%2===0?.6:.2);
-    floor.fillCircle(-245+i*48,-153,3);
-    floor.fillCircle(-245+i*48,148,3);
-  }
-  // A marked aperture on the northern side receives arriving ships.
-  floor.lineStyle(5,0xd3e4f5,.88);
-  floor.lineBetween(46,-185,190,-185);
-  floor.lineStyle(2,0x87b4d8,.7);
-  floor.lineBetween(67,-165,67,-120);
-  floor.lineBetween(170,-165,170,-120);
-  text(scene,interior,120,-201,'AIRLOCK 01 / ENTRY',11,'#c4dff3');
-  text(scene,interior,-175,166,'SHIP STORAGE • ACTIVE',10,'#92b4d0');
+  label(scene,interior,125,-211,'ARRIVAL',11,'#d5d5d7');
+  label(scene,interior,-5,208,'HANGAR / DECK 01',12,'#cecece');
 
-  const berthCount=hangarCapacity(state);
-  for(let berth=0;berth<berthCount && berth<MAX_BERTHS;berth++){
-    const pos=berthLocalPosition(berth);
-    const px=pos.x,py=pos.y;
-    floor.lineStyle(1.5,0x8eaeca,.6);
-    floor.strokeRoundedRect(px-61,py-34,122,68,7);
-    floor.lineStyle(3,0x9ac0dc,.45);
-    floor.lineBetween(px-54,py-27,px-54,py+27);
-    floor.lineBetween(px+54,py-27,px+54,py+27);
-    floor.lineStyle(1,0xb2c8db,.4);
-    floor.lineBetween(px,py-29,px,py+29);
-    text(scene,interior,px,py+45,'BAY '+String(berth+1).padStart(2,'0'),9,'#9bb6cd');
-  }
-  // Service equipment lives on and around the hangar.
-  for(const x of [-262,266]){
-    for(const y of [-125,-40,50,132]){
-      floor.fillStyle(0xa1bdcf,.6);
-      floor.fillCircle(x,y,5);
-      floor.lineStyle(1.4,0xc9deed,.6);
-      floor.strokeCircle(x,y,9);
+  // The deck plan uses the SAME exact coordinates as construction's 6x4 map.
+  const online=powerReport(state).onlineIds;
+  const buildMode=document.body.dataset.uiPanel==='build';
+  if(buildMode){
+    for(let y=0;y<ROOM_GRID.rows;y++){
+      for(let x=0;x<ROOM_GRID.columns;x++){
+        if(state.rooms.some(room=>room.x===x&&room.y===y))continue;
+        const connected=state.rooms.some(room=>Math.abs(room.x-x)+Math.abs(room.y-y)===1);
+        if(!connected)continue;
+        const p=deckCellPoint(x,y);
+        const g=scene.add.graphics();interior.add(g);
+        g.lineStyle(1,0xaaaaad,.34);
+        g.strokeRoundedRect(p.x-CELL_SIZE.width/2,p.y-CELL_SIZE.height/2,
+          CELL_SIZE.width,CELL_SIZE.height,6);
+        label(scene,interior,p.x,p.y,'+',16,'#77777a');
+      }
     }
   }
-  text(scene,interior,-12,214,'HANGAR DECK • PRESS B FOR CONSTRUCTION',11,'#cee2f4');
-  text(scene,interior,400,-303,'SYSTEMS / ONLINE',11,'#a9c6de');
+  for(const room of state.rooms)moduleTile(scene,interior,room,online.has(room.id));
 
-  // Roof is a wholly opaque arrow craft in flight; its alpha fades while docking.
+  // Central aisle and service markings above room panels.
+  deck.lineStyle(1,0x8f8f92,.42);
+  deck.lineBetween(-268,0,265,0);
+  deck.lineStyle(1,0xa5a5a5,.22);
+  deck.lineBetween(-534,0,-286,0);
+  deck.lineBetween(286,0,496,0);
+
   const roof=scene.add.container(homeX,homeY).setDepth(26);
-  const armor=scene.add.graphics(); roof.add(armor);
-  polygon(armor,SHAPE,0x101b29,0xd8ebff,4);
-  polygon(armor,ARMOR,0x1a2b3d,0x6688a5,2);
-  const cockpit: Vector[]=[[80,-71],[273,-82],[460,0],[273,82],[80,71],[177,0]];
-  polygon(armor,cockpit,0x08131f,0xa8cfe9,2);
-  armor.lineStyle(2,0x92b7d2,.65);
-  armor.lineBetween(-325,-310,198,-104);
-  armor.lineBetween(-325,310,198,104);
-  armor.lineBetween(-440,-166,-89,-88);
-  armor.lineBetween(-440,166,-89,88);
-  // Broad illuminated engine cowlings.
-  for(const yy of [-171,171]){
-    armor.fillStyle(0x10253b,1);
-    armor.fillRoundedRect(-565,yy-38,110,76,9);
-    armor.lineStyle(2,0xadc9e3,.82);
-    armor.strokeRoundedRect(-565,yy-38,110,76,9);
-    armor.fillStyle(0xd8eaff,.72);
-    armor.fillRoundedRect(-570,yy-25,12,50,6);
-    armor.fillStyle(0x5b9ad2,.25);
-    armor.fillEllipse(-603,yy,60,47);
+  const plating=scene.add.graphics();roof.add(plating);
+  path(plating,HULL,0x111113,0xe5e5e6,3.2);
+  path(plating,INNER,0x202023,0x78787b,1.4);
+  // A quiet arrow-shaped armor motif instead of neon sci-fi decoration.
+  path(plating,[[50,-60],[232,-80],[461,0],[232,80],[50,60],[159,0]],
+    0x0b0b0c,0xa9a9ac,2);
+  plating.lineStyle(1.5,0xa9a9ab,.62);
+  plating.lineBetween(-302,-305,239,-116);
+  plating.lineBetween(-302,305,239,116);
+  plating.lineBetween(-448,-169,-112,-83);
+  plating.lineBetween(-448,169,-112,83);
+  for(const y of [-169,169]){
+    plating.fillStyle(0x29292c,1);
+    plating.lineStyle(2,0xd3d3d4,.75);
+    plating.fillRoundedRect(-572,y-31,101,62,9);
+    plating.strokeRoundedRect(-572,y-31,101,62,9);
+    plating.fillStyle(0xd7d7d7,.66);
+    plating.fillRoundedRect(-578,y-20,8,40,4);
   }
-  armor.fillStyle(0x18334a,1);
-  armor.fillRoundedRect(59,-338,144,41,6);
-  armor.lineStyle(2,0xb2cddd,.86);
-  armor.strokeRoundedRect(59,-338,144,41,6);
-  for(let i=0;i<7;i++){
-    armor.lineStyle(1,0x88b1d0,.58);
-    armor.lineBetween(71+i*18,-333,71+i*18,-301);
+  const count=Math.max(0,state.rooms.length-4);
+  for(let i=0;i<Math.min(count,8);i++){
+    plating.lineStyle(1.4,0xb1b1b3,.7);
+    const px=-307+i*62;
+    plating.lineBetween(px,-284,px+30,-277);
+    plating.lineBetween(px,284,px+30,277);
   }
-  // Hull segment markings adapt visually as the player expands the ship.
-  for(let i=0;i<Math.max(2,Math.min(11,state.rooms.length-2));i++){
-    const xx=-285+i*61;
-    armor.lineStyle(1.5,0x9dbbd4,.55);
-    armor.lineBetween(xx,-286,xx+37,-280);
-    armor.lineBetween(xx,286,xx+37,280);
-  }
-  text(scene,roof,-210,-20,'A R R O W',19,'#d5e9f8');
-  text(scene,roof,-210,10,'FRONTIER / MOTHERSHIP',11,'#89a6be');
-  text(scene,roof,132,-350,'DOCK / HANGAR 01',12,'#ecf6ff');
-  text(scene,roof,0,390,'ARROW-01 · INTERSTELLAR MOBILE BASE',13,'#b1c9df');
-
+  label(scene,roof,-205,-11,'A R R O W',24,'#f1f1f1');
+  label(scene,roof,-200,19,'MOTHERSHIP 01',11,'#adadaf');
+  label(scene,roof,133,-359,'HANGAR ENTRY',11,'#e2e2e2');
+  label(scene,roof,0,390,'FRONTIER',12,'#a3a3a5');
   return {roof,interior};
 }

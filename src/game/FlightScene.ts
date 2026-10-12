@@ -7,6 +7,7 @@ import { distance, DOCK_RADIUS, HOME, MINE_RANGE, WORLD } from '../sim/model';
 import { berthLocalPosition, findAvailableBerth, MOTHERSHIP, shipBerthSpan } from '../sim/hangar';
 import { buildMothershipArtwork } from './MothershipArt';
 import type { MothershipArtwork } from './MothershipArt';
+import { locateDeckCell } from './deckLayout';
 import type { Asteroid, GameState, Point, Ship } from '../sim/model';
 
 export type ViewMode = 'flight' | 'interior' | 'transition';
@@ -21,10 +22,15 @@ export class FlightScene extends Phaser.Scene {
   private beam!: Phaser.GameObjects.Graphics;
   private rangeIndicator!: Phaser.GameObjects.Graphics;
   private controlsBlocked = true;
+  private virtualMove = {x:0,y:0};
+  private virtualMining = false;
+  private velocity = new Map<string,{x:number,y:number}>();
   private cameraAnchor!: Phaser.GameObjects.Zone;
   private mode: ViewMode = 'flight';
   private pinch?: PinchGesture;
   private cameraTouched = false;
+  private deckClick?: (x:number,y:number)=>void;
+  private hadMultitouch = false;
   private timeToSave = 0;
   private timeToUpdateUI = 0;
   private state: GameState;
@@ -44,6 +50,9 @@ export class FlightScene extends Phaser.Scene {
   }
 
   get viewMode(): ViewMode { return this.mode; }
+  setDeckSelectionHandler(handler:(x:number,y:number)=>void):void {
+    this.deckClick=handler;
+  }
 
   create(): void {
     const camera = this.cameras.main;
@@ -67,6 +76,14 @@ export class FlightScene extends Phaser.Scene {
     this.cameraAnchor = this.add.zone(HOME.x, HOME.y, 1, 1).setVisible(false);
     this.input.addPointer(3);
     this.game.canvas.style.touchAction = 'none';
+    this.input.on('pointerup',(pointer:Phaser.Input.Pointer)=>{
+      if(this.mode!=='interior'||document.body.dataset.uiPanel!=='build')return;
+      if(this.hadMultitouch)return;
+      const x=pointer.worldX-HOME.x;
+      const y=pointer.worldY-HOME.y;
+      const cell=locateDeckCell(x,y);
+      if(cell)this.deckClick?.(cell.x,cell.y);
+    });
 
     // A trackpad two-finger swipe pans. Trackpad pinch (ctrl+wheel) zooms.
     // Touchscreen two-finger pan/pinch is handled in updateTouchNavigation().
@@ -117,11 +134,7 @@ export class FlightScene extends Phaser.Scene {
       this.dockRing.strokeCircle(HOME.x, HOME.y, DOCK_RADIUS);
       this.dockRing.lineStyle(1, 0x7595b0, .13);
       this.dockRing.strokeCircle(HOME.x, HOME.y, DOCK_RADIUS + 20);
-      const dockMarker = this.add.text(MOTHERSHIP.entrance.x, MOTHERSHIP.entrance.y - 67,
-        'HANGAR 01 / APPROACH', {
-          fontFamily: 'monospace', fontSize: '13px', color: '#bad5e9', letterSpacing: 2,
-        }).setOrigin(.5).setDepth(5);
-      dockMarker.setData('purpose', 'hangar-entry');
+      // Entry is indicated by the actual roof airlock; no floating debug labels.
     }
   }
 
@@ -131,16 +144,25 @@ export class FlightScene extends Phaser.Scene {
   private flightZoom(): number {
     return (window.innerWidth < 680 ? .87 : window.innerWidth < 1100 ? 1.05 : 1.16) * this.deviceScale();
   }
+  private interiorMargins(): {left:number;right:number} {
+    const panelOpen = document.body.dataset.uiPanel === 'build' ||
+      document.body.dataset.uiPanel === 'fleet';
+    return {
+      left:window.innerWidth > 760 ? 300 : 0,
+      right:panelOpen ? Math.min(365,window.innerWidth*.32) : 0,
+    };
+  }
   private interiorZoom(): number {
-    const reservedWidth = window.innerWidth >= 1000 ? 390 : window.innerWidth >= 700 ? 180 : 0;
-    const availableWidth = Math.max(280, window.innerWidth - reservedWidth - 75);
-    const availableHeight = Math.max(300, window.innerHeight - 185);
-    return Math.max(.26, Math.min(1.05, availableWidth / 1220, availableHeight / 850)) * this.deviceScale();
+    const margins=this.interiorMargins();
+    const availableWidth=Math.max(240,window.innerWidth-margins.left-margins.right-55);
+    const availableHeight=Math.max(280,window.innerHeight-155);
+    return Math.max(.24,Math.min(1.12,availableWidth/1220,availableHeight/850))*this.deviceScale();
   }
   private interiorFocus(): Point {
-    const rightPanelOffset = window.innerWidth >= 1000 ? 165 : window.innerWidth >= 700 ? 80 : 0;
-    const zoomCss = this.interiorZoom() / this.deviceScale();
-    return { x: HOME.x + rightPanelOffset / Math.max(.25, zoomCss), y: HOME.y };
+    const margins=this.interiorMargins();
+    const offset=(margins.left-margins.right)/2;
+    const cssZoom=this.interiorZoom()/this.deviceScale();
+    return {x:HOME.x-offset/Math.max(.24,cssZoom),y:HOME.y};
   }
   getCameraStatus(): { zoom: number; worldX: number; worldY: number } {
     const camera=this.cameras?.main;
@@ -169,37 +191,36 @@ export class FlightScene extends Phaser.Scene {
   }
   private setViewMode(mode: ViewMode): void {
     this.mode = mode;
+    if(mode !== 'flight')this.velocity.clear();
     this.pinch = undefined;
     this.onViewChange(mode);
   }
 
   private drawBackground(): void {
     const g = this.add.graphics().setDepth(-50);
-    g.fillGradientStyle(0x091524, 0x05080d, 0x050b15, 0x020509);
+    g.fillGradientStyle(0x09090a,0x050506,0x080809,0x030303);
     g.fillRect(0, 0, WORLD.width, WORLD.height);
     let seed = 41097;
     const rand = (): number => { seed = seed * 16807 % 2147483647; return seed / 2147483647; };
-    for (let i = 0; i < 1150; i++) {
-      g.fillStyle(rand() > .8 ? 0xbdd9f4 : 0x67849c, .15 + rand() * .53);
+    for (let i = 0; i < 850; i++) {
+      g.fillStyle(rand() > .8 ? 0xe8e8e8 : 0x757577, .10 + rand() * .48);
       g.fillCircle(rand() * WORLD.width, rand() * WORLD.height, rand() > .95 ? 1.5 : .6);
     }
-    g.lineStyle(1, 0x486884, .1);
+    g.lineStyle(1, 0x7a7a7a, .035);
     for (let x = 0; x < WORLD.width; x += 200) g.lineBetween(x, 0, x, WORLD.height);
     for (let y = 0; y < WORLD.height; y += 200) g.lineBetween(0, y, WORLD.width, y);
-    g.lineStyle(1, 0x7598b5, .12);
+    g.lineStyle(1, 0x888888, .065);
     g.strokeCircle(HOME.x, HOME.y, 920);
     g.strokeCircle(HOME.x, HOME.y, 1250);
-    this.add.text(HOME.x - 1050, HOME.y - 1200, 'VESTA / ANCHOR POINT', {
-      fontFamily: 'monospace', fontSize: '17px', color: '#7790ac', letterSpacing: 3,
-    }).setDepth(-1);
+    // Leave world labels to the interface. Nothing decorative competes with the ship.
   }
 
   private makeAsteroid(asteroid: Asteroid): Phaser.GameObjects.Container {
     const object = this.add.container(asteroid.x, asteroid.y).setDepth(10);
     const graphics = this.add.graphics();
     const size = asteroid.size;
-    graphics.fillStyle(asteroid.ore === 'copper' ? 0x475d70 : 0x667d93, .78);
-    graphics.lineStyle(2, asteroid.ore === 'copper' ? 0xb6afad : 0xd1e2f5, .87);
+    graphics.fillStyle(asteroid.ore === 'copper' ? 0x656567 : 0x7d7d7f, .8);
+    graphics.lineStyle(1.5, asteroid.ore === 'copper' ? 0xc7c7c8 : 0xe1e1e1, .85);
     graphics.beginPath();
     for (let i=0;i<=8;i++) {
       const angle = i * Math.PI / 4;
@@ -208,11 +229,11 @@ export class FlightScene extends Phaser.Scene {
       else graphics.lineTo(Math.cos(angle)*size*irregular,Math.sin(angle)*size*irregular);
     }
     graphics.closePath();graphics.fillPath();graphics.strokePath();
-    graphics.lineStyle(1,0xd2e0ee,.4);
+    graphics.lineStyle(1,0xd1d1d1,.4);
     graphics.lineBetween(-size*.3,-size*.24,size*.37,size*.18);
     object.add(graphics);
     object.add(this.add.text(0,-size-26,asteroid.ore.toUpperCase(),{
-      fontFamily:'monospace',fontSize:'12px',color:'#9db8cc',
+      fontFamily:'Inter, sans-serif',fontSize:'11px',color:'#ababac',
     }).setOrigin(.5));
     object.setVisible(asteroid.remaining > 0);
     return object;
@@ -222,16 +243,16 @@ export class FlightScene extends Phaser.Scene {
     const view = this.add.container(ship.x, ship.y).setDepth(19);
     const g = this.add.graphics();
     const size = shipBerthSpan(ship) > 1 ? 1.22 : 1;
-    g.fillStyle(ship.id==='scout'?0xeaf6ff:0xb3cee3,.96);
+    g.fillStyle(ship.id==='scout'?0xf4f4f4:0xbbbbbd,.96);
     g.lineStyle(1.8,0xffffff,.95);
     g.beginPath();g.moveTo(30,0);g.lineTo(-16,-17);g.lineTo(-9,-3);
     g.lineTo(-16,17);g.closePath();g.fillPath();g.strokePath();
-    g.fillStyle(0x071421,1);g.fillTriangle(-6,-8,12,0,-6,8);
-    g.fillStyle(0x8bbce4,.8);g.fillTriangle(-16,-7,-31,0,-16,7);
+    g.fillStyle(0x121214,1);g.fillTriangle(-6,-8,12,0,-6,8);
+    g.fillStyle(0x99999b,.8);g.fillTriangle(-16,-7,-31,0,-16,7);
     g.lineStyle(1,0x6a879f,.8);g.lineBetween(-11,0,-23,0);
     view.add(g); view.setScale(size);
     const label = this.add.text(ship.x,ship.y-42,ship.name,{
-      fontFamily:'monospace',fontSize:'12px',color:'#c5d9e9',
+      fontFamily:'Inter, sans-serif',fontSize:'12px',color:'#d8d8da',
     }).setOrigin(.5).setDepth(20);
     view.setData('label',label);
     return view;
@@ -248,8 +269,12 @@ export class FlightScene extends Phaser.Scene {
       view.setRotation(ship.angle);
       const label=view.getData('label') as Phaser.GameObjects.Text;
       label.setPosition(ship.x,ship.y-43);
-      label.setVisible(visible);
-      label.setColor(ship.id===this.state.activeShipId?'#eaf6ff':'#9db3c8');
+      // Flight already has an active-ship HUD. Hide duplicate active labels
+      // and nearby nonactive names that obscure asteroids and other vessels.
+      const active=activeShip(this.state);
+      label.setVisible(visible && (this.mode==='interior' ||
+        (ship.id!==active.id && distance(ship,active)>105)));
+      label.setColor(ship.id===this.state.activeShipId?'#eeeeee':'#99999c');
     }
     for(const asteroid of this.state.asteroids){
       const view=this.asteroidViews.get(asteroid.id);
@@ -268,16 +293,33 @@ export class FlightScene extends Phaser.Scene {
     if(ship.docked)return;
     let dx=0,dy=0;
     if(this.keys.W.isDown||this.keys.UP.isDown)dy--;
+    dy+=this.virtualMove.y;
     if(this.keys.S.isDown||this.keys.DOWN.isDown)dy++;
     if(this.keys.A.isDown||this.keys.LEFT.isDown)dx--;
     if(this.keys.D.isDown||this.keys.RIGHT.isDown)dx++;
-    if(dx||dy){
-      const length=Math.hypot(dx,dy);
-      ship.x=Phaser.Math.Clamp(ship.x+dx/length*ship.speed*dt,35,WORLD.width-35);
-      ship.y=Phaser.Math.Clamp(ship.y+dy/length*ship.speed*dt,35,WORLD.height-35);
+    dx+=this.virtualMove.x;
+    // Acceleration and gentle damping make piloting feel like a vehicle, not
+    // moving a cursor around a desktop. The speed cap is unchanged.
+    const v=this.velocity.get(ship.id)??{x:0,y:0};
+    const length=Math.hypot(dx,dy);
+    const acceleration=ship.speed*4.5;
+    if(length>0){
+      v.x+=(dx/length)*acceleration*dt;
+      v.y+=(dy/length)*acceleration*dt;
     }
+    const drag=Math.exp(-3.8*dt);
+    v.x*=drag;v.y*=drag;
+    const speed=Math.hypot(v.x,v.y);
+    if(speed>ship.speed){v.x*=ship.speed/speed;v.y*=ship.speed/speed;}
+    ship.x=Phaser.Math.Clamp(ship.x+v.x*dt,35,WORLD.width-35);
+    ship.y=Phaser.Math.Clamp(ship.y+v.y*dt,35,WORLD.height-35);
+    this.velocity.set(ship.id,v);
     const pointer=this.input.activePointer;
-    ship.angle=Phaser.Math.Angle.Between(ship.x,ship.y,pointer.worldX,pointer.worldY);
+    if(this.virtualMove.x||this.virtualMove.y){
+      ship.angle=Math.atan2(this.virtualMove.y,this.virtualMove.x);
+    }else if(pointer){
+      ship.angle=Phaser.Math.Angle.Between(ship.x,ship.y,pointer.worldX,pointer.worldY);
+    }
   }
 
   private stepMining(dt:number):void {
@@ -294,7 +336,7 @@ export class FlightScene extends Phaser.Scene {
         if(hit<best){best=hit;target=asteroid;}
       }
     }
-    if(!target && this.keys.SPACE.isDown)target=nearestDeposit(this.state,ship);
+    if(!target && (this.keys.SPACE.isDown||this.virtualMining))target=nearestDeposit(this.state,ship);
     if(!target || distance(ship,target)>MINE_RANGE)return;
     const mined=extractOre(this.state,ship,target,dt*ship.miningRate);
     if(mined>0){
@@ -449,6 +491,10 @@ export class FlightScene extends Phaser.Scene {
     const index=this.state.ships.findIndex(ship=>ship.id===this.state.activeShipId);
     this.selectShip(this.state.ships[(index+1)%this.state.ships.length].id);
   }
+  setVirtualInput(x:number,y:number,mining:boolean):void {
+    this.virtualMove={x:Math.max(-1,Math.min(1,x)),y:Math.max(-1,Math.min(1,y))};
+    this.virtualMining=mining;
+  }
   setControlsBlocked(blocked:boolean):void {
     this.controlsBlocked=blocked;
     if(blocked&&this.beam)this.beam.clear();
@@ -484,7 +530,12 @@ export class FlightScene extends Phaser.Scene {
   private updateTouchNavigation():void {
     if(this.mode!=='interior'){this.pinch=undefined;return;}
     const held=this.input.manager.pointers.filter(pointer=>pointer.isDown);
-    if(held.length<2){this.pinch=undefined;return;}
+    if(held.length<2){
+      this.pinch=undefined;
+      if(held.length===0)this.hadMultitouch=false;
+      return;
+    }
+    this.hadMultitouch=true;
     const [one,two]=held;
     const cx=(one.x+two.x)/2,cy=(one.y+two.y)/2;
     const separation=Math.max(8,Math.hypot(one.x-two.x,one.y-two.y));

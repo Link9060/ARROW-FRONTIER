@@ -102,7 +102,7 @@ export function makeNewGame(now = Date.now()): GameState {
       },
       {
         id: 'miner', name: 'MINER-02', role: 'INDUSTRIAL MINER',
-        x: HOME.x + 120, y: HOME.y - 810, angle: 0,
+        x: HOME.x + 530, y: HOME.y - 770, angle: 0,
         capacity: 90, speed: 155, miningRate: 6,
         cargo: { iron: 0, copper: 0 }, docked: false, mode: 'auto',
         upgrades: { mining: 0, cargo: 0 },
