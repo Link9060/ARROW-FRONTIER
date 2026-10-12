@@ -60,6 +60,10 @@ export class BuilderUI {
   get isOpen(): boolean { return this.visible; }
   open(): void {
     if (this.visible) return;
+    if (!activeShip(this.state).docked) {
+      this.notice('DOCK YOUR ACTIVE SHIP TO ACCESS MOTHERSHIP INTERIOR');
+      return;
+    }
     this.visible = true;
     get('builder-overlay').classList.remove('hidden');
     get('builder-overlay').setAttribute('aria-hidden', 'false');
