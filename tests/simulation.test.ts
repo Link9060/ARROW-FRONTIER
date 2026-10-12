@@ -30,7 +30,7 @@ describe('FRONTIER simulation and save invariants', () => {
     const state = makeNewGame(1);
     const ship = activeShip(state);
     ship.docked = false;
-    ship.x = HOME.x + 400;
+    ship.x = HOME.x + 760;
     ship.y = HOME.y;
     ship.cargo.iron = 45;
     expect(dockShip(state, ship)).toBe('too-far');
