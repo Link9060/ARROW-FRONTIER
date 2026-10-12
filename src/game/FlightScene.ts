@@ -122,8 +122,8 @@ export class FlightScene extends Phaser.Scene {
     this.onViewChange(this.mode);
     this.refreshViews();
     this.onStateChange();
-    this.announce(ship.docked ? 'HANGAR READY · CHOOSE LAUNCH OR EXPLORE THE INTERIOR' :
-      'SHIP CONTROL ONLINE · RETURN TO THE MOTHERSHIP TO DOCK');
+    // The first view belongs to the ship, not to a persistent onboarding
+    // banner. Contextual controls already explain launch and docking.
   }
 
   private setAirlock(open:boolean,animate=true):void {
