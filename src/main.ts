@@ -123,8 +123,8 @@ function commandFleetShip(shipId:string,order:FleetOrder):void {
     // A ship cannot be both player-piloted and autonomously assigned. Hand
     // controls to another existing ship instead of forcing the player to
     // manually launch and switch before dispatching this one.
-    const replacement=state.ships.find(ship=>ship.id!==shipId&&ship.docked) ??
-      state.ships.find(ship=>ship.id!==shipId);
+    const replacement=state.ships.find(ship=>ship.id!==shipId&&ship.docked&&!ship.navigation) ??
+      state.ships.find(ship=>ship.id!==shipId&&!ship.navigation);
     if(!replacement){
       notice('Another ship is required before delegating your own ship.');
       return;
@@ -231,6 +231,8 @@ function updateUI():void{
     }
     const pilot=entry.querySelector<HTMLButtonElement>('.fleet-ship')!;
     pilot.classList.toggle('selected',member.id===state.activeShipId);
+    pilot.disabled=!!member.navigation;
+    pilot.title=member.navigation?'Autopilot taxi in progress · wait until clear':'Pilot '+member.name;
     pilot.dataset.worldX=member.x.toFixed(2);
     pilot.dataset.worldY=member.y.toFixed(2);
     pilot.dataset.docked=String(member.docked);
