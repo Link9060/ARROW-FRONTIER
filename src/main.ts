@@ -23,7 +23,15 @@ let lastView:ViewMode='interior';
 
 function notice(text:string):void{
   const toast=$('toast');
-  toast.textContent=text;
+  // Scene messages describe technical stages. Surface only compact,
+  // user-facing status so nothing obscures the ship.
+  const pretty=/launch complete/i.test(text)?'Ship launched':
+    /docking complete/i.test(text)?'Docked safely':
+    /autodock engaged/i.test(text)?'Approaching hangar…':
+    /hangar open/i.test(text)?'Hangar opening…':
+    /departure authorized/i.test(text)?'Launching…':
+    /welcome to frontier/i.test(text)?'Welcome to Frontier':text;
+  toast.textContent=pretty.length>62?pretty.slice(0,59)+'…':pretty;
   toast.classList.add('visible');
   if(toastTimer)clearTimeout(toastTimer);
   toastTimer=setTimeout(()=>toast.classList.remove('visible'),2700);
@@ -117,7 +125,9 @@ function updateUI():void{
   $('ship-copper').textContent=roundCargo(ship.cargo.copper);
   $('pilot-tip').textContent=cargo>=ship.capacity-0.01?'Cargo full. Return to your mothership.':
     dist<=DOCK_RADIUS?'Within docking range. Press E or Dock.':
-    'WASD to move · Space to mine · E to dock';
+    (window.matchMedia('(pointer: coarse)').matches?
+      'Use the arrows to fly. Hold Mine near an asteroid.':
+      'WASD to move · Space to mine · E to dock');
 
   $('hangar-occupancy').textContent=dockedBerthCount(state)+' / '+hangarCapacity(state)+' BAYS';
   $('hangar-summary').textContent='Hangar · Bay '+String((ship.berth??0)+1).padStart(2,'0')+' · '+ship.name;
