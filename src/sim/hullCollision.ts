@@ -39,7 +39,7 @@ export function hitsMothership(world:Point,state:Pick<GameState,'rooms'>,padding
   if(insideRect(local,-294-pad,floorTop-22-pad,588+pad*2,
     (-45)-(floorTop-22)+pad*2))return true;
   // Narrow bridge between side airlock and the existing hangar shell.
-  if(insideRect(local,-183-pad,doorY-22-pad,136+pad*2,
+  if(insideRect(local,-68-pad,doorY-22-pad,136+pad*2,
     floorTop-(doorY-22)+pad*2))return true;
   return false;
 }
