@@ -22,6 +22,8 @@ export interface Ship extends Point {
   mode: ShipMode;
   angle: number;
   upgrades: { mining: number; cargo: number };
+  /** Starting slot in the mothership hangar when docked. */
+  berth?: number;
 }
 export interface Room {
   id: string;
@@ -44,11 +46,13 @@ export interface GameState {
   nextRoomId: number;
   refineryProgress: number;
   lifetimeAlloy: number;
+  /** One-time coordinate migration for the larger cinematic world. */
+  worldRevision?: number;
 }
-export const WORLD = { width: 2600, height: 1800 };
-export const HOME: Point = { x: 1300, y: 900 };
+export const WORLD = { width: 4400, height: 3200 };
+export const HOME: Point = { x: 2200, y: 1600 };
 // Includes the full silhouette of the upgraded arrow-shaped hull.
-export const DOCK_RADIUS = 280;
+export const DOCK_RADIUS = 690;
 export const MINE_RANGE = 275;
 export const OFFLINE_CAP_SECONDS = 2 * 60 * 60;
 export const ROOM_GRID = { columns: 6, rows: 4 };
@@ -72,7 +76,7 @@ export function starterRooms(): Room[] {
 export function makeNewGame(now = Date.now()): GameState {
   const asteroids: Asteroid[] = Array.from({ length: 27 }, (_, i) => {
     const angle = i * 2.399963229728653;
-    const radius = 315 + ((i * 91) % 510);
+    const radius = 780 + ((i * 91) % 510);
     return {
       id: 'AST-' + String(i + 1).padStart(2, '0'),
       ore: i % 3 === 0 ? 'copper' : 'iron',
@@ -91,14 +95,14 @@ export function makeNewGame(now = Date.now()): GameState {
     ships: [
       {
         id: 'scout', name: 'ARROW-01', role: 'SCOUT / HYBRID',
-        x: HOME.x + 160, y: HOME.y + 12, angle: 0,
+        x: HOME.x - 225, y: HOME.y - 110, angle: 0,
         capacity: 60, speed: 285, miningRate: 8,
-        cargo: { iron: 0, copper: 0 }, docked: true, mode: 'manual',
+        cargo: { iron: 0, copper: 0 }, docked: true, berth: 0, mode: 'manual',
         upgrades: { mining: 0, cargo: 0 },
       },
       {
         id: 'miner', name: 'MINER-02', role: 'INDUSTRIAL MINER',
-        x: HOME.x + 220, y: HOME.y + 120, angle: 0,
+        x: HOME.x + 120, y: HOME.y - 810, angle: 0,
         capacity: 90, speed: 155, miningRate: 6,
         cargo: { iron: 0, copper: 0 }, docked: false, mode: 'auto',
         upgrades: { mining: 0, cargo: 0 },
@@ -110,5 +114,6 @@ export function makeNewGame(now = Date.now()): GameState {
     nextRoomId: 5,
     refineryProgress: 0,
     lifetimeAlloy: 0,
+    worldRevision: 4,
   };
 }
