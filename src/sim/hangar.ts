@@ -1,4 +1,5 @@
 import { HOME } from './model';
+import { SHIP_ZONES } from './arrowGeometry';
 import type { GameState, Point, Ship } from './model';
 
 /**
@@ -6,12 +7,13 @@ import type { GameState, Point, Ship } from './model';
  * The mothership is intentionally ~20 times longer than a starter scout.
  */
 export const MOTHERSHIP = {
-  halfWidth: 570,
-  halfHeight: 350,
-  entrance: { x: HOME.x + 120, y: HOME.y - 354 },
-  approach: { x: HOME.x + 120, y: HOME.y - 535 },
-  departure: { x: HOME.x + 120, y: HOME.y - 750 },
-  hangar: { x: -270, y: -185, width: 550, height: 370 },
+  halfWidth: 585,
+  halfHeight: 442,
+  /** The upper SIDE hangar is physically mounted to the broad shoulder. */
+  entrance: { x: HOME.x + SHIP_ZONES.airlock.x, y: HOME.y + SHIP_ZONES.airlock.y },
+  approach: { x: HOME.x + SHIP_ZONES.airlock.x, y: HOME.y - 555 },
+  departure: { x: HOME.x + SHIP_ZONES.airlock.x, y: HOME.y - 830 },
+  hangar: { x: -283, y: -187, width: 567, height: 375 },
 } as const;
 
 /** Hangar slots are contiguous parking units. Wide ships occupy neighboring slots. */
@@ -28,6 +30,25 @@ export function hangarCapacity(state: Pick<GameState, 'rooms'>): number {
   return Math.min(MAX_BERTHS, state.rooms
     .filter((room) => room.type === 'hangar')
     .reduce((capacity, room) => capacity + 4 * room.level, 0));
+}
+
+export interface DockingPort {
+  entrance:Point; approach:Point; departure:Point; tractor:Point;
+}
+/**
+ * Hangar growth moves the physical side entrance and tractor along the newly
+ * constructed outer plating. Nothing clips through later parking rows.
+ */
+export function dockingPort(state:Pick<GameState,'rooms'>):DockingPort {
+  const extraRows=Math.max(0,Math.ceil(hangarCapacity(state)/BERTH_COLUMNS)-1);
+  const shift=-112*extraRows;
+  const move=(point:Point):Point=>({x:point.x,y:point.y+shift});
+  return {
+    entrance:move(MOTHERSHIP.entrance),
+    approach:move(MOTHERSHIP.approach),
+    departure:move(MOTHERSHIP.departure),
+    tractor:move({x:HOME.x+SHIP_ZONES.tractor.x,y:HOME.y+SHIP_ZONES.tractor.y}),
+  };
 }
 
 export function berthRange(index: number, span: number): number[] {
@@ -60,7 +81,7 @@ export function findAvailableBerth(state: GameState, ship: Ship): number | null 
 export function berthLocalPosition(index: number, span = 1): Point {
   const row = Math.floor(index / BERTH_COLUMNS);
   const col = index % BERTH_COLUMNS;
-  return { x: -225 + (col + (span - 1) / 2) * 145, y: -110 + row * 112 };
+  return { x: -225 + (col + (span - 1) / 2) * 145, y: -118 - row * 112 };
 }
 
 export function berthWorldPosition(ship: Ship): Point {

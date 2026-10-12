@@ -4,10 +4,15 @@ import {
   nearestDeposit, switchShip,
 } from '../sim/engine';
 import { distance, DOCK_RADIUS, HOME, MINE_RANGE, WORLD } from '../sim/model';
-import { berthLocalPosition, findAvailableBerth, MOTHERSHIP, shipBerthSpan } from '../sim/hangar';
+import { berthWorldPosition, dockingPort, findAvailableBerth } from '../sim/hangar';
+import { arrowOutline, hullSize } from '../sim/arrowGeometry';
+import { dockingRoute, departureRoute, inTractorStage, segmentDuration, shortestAngle } from '../sim/dockingRoute';
+import type { DockWaypoint } from '../sim/dockingRoute';
 import { buildMothershipArtwork } from './MothershipArt';
 import type { MothershipArtwork } from './MothershipArt';
 import { locateDeckCell } from './deckLayout';
+import { resolveHullMovement } from '../sim/hullCollision';
+import { MiningEffects } from './MiningEffects';
 import type { Asteroid, GameState, Point, Ship } from '../sim/model';
 
 export type ViewMode = 'flight' | 'interior' | 'transition';
@@ -19,8 +24,10 @@ export class FlightScene extends Phaser.Scene {
   private asteroidViews = new Map<string, Phaser.GameObjects.Container>();
   private art?: MothershipArtwork;
   private dockRing?: Phaser.GameObjects.Graphics;
-  private beam!: Phaser.GameObjects.Graphics;
+  private miningEffects!: MiningEffects;
   private rangeIndicator!: Phaser.GameObjects.Graphics;
+  private tractorBeam!: Phaser.GameObjects.Graphics;
+  private tractorPhase = 0;
   private controlsBlocked = true;
   private virtualMove = {x:0,y:0};
   private virtualMining = false;
@@ -68,7 +75,8 @@ export class FlightScene extends Phaser.Scene {
       this.shipViews.set(ship.id, this.makeShip(ship));
     }
 
-    this.beam = this.add.graphics().setDepth(24);
+    this.miningEffects = new MiningEffects(this);
+    this.tractorBeam = this.add.graphics().setDepth(28);
     this.rangeIndicator = this.add.graphics().setDepth(4);
     this.keys = this.input.keyboard!.addKeys(
       'W,A,S,D,UP,DOWN,LEFT,RIGHT,SPACE,E,Q'
@@ -115,10 +123,27 @@ export class FlightScene extends Phaser.Scene {
       'SHIP CONTROL ONLINE · RETURN TO THE MOTHERSHIP TO DOCK');
   }
 
+  private setAirlock(open:boolean,animate=true):void {
+    if(!this.art)return;
+    const {doorCenterX,doorLeft,doorRight}=this.art;
+    const distance=29+(open?45:0);
+    this.tweens.killTweensOf([doorLeft,doorRight]);
+    if(!animate){
+      doorLeft.x=doorCenterX-distance;
+      doorRight.x=doorCenterX+distance;
+      return;
+    }
+    this.tweens.add({targets:doorLeft,x:doorCenterX-distance,
+      duration:700,ease:'Sine.InOut'});
+    this.tweens.add({targets:doorRight,x:doorCenterX+distance,
+      duration:700,ease:'Sine.InOut'});
+  }
+
   private setArtworkOpacity(roofAlpha: number): void {
     if (!this.art) return;
     this.art.roof.setAlpha(roofAlpha);
     this.art.interior.setAlpha(1 - roofAlpha);
+    this.setAirlock(roofAlpha<.5,false);
   }
 
   /** Rebuild exterior and interior artwork after the player changes rooms. */
@@ -126,6 +151,7 @@ export class FlightScene extends Phaser.Scene {
     const roofAlpha = this.mode === 'interior' ? 0 : 1;
     this.art?.roof.destroy(true);
     this.art?.interior.destroy(true);
+    this.art?.doors.destroy(true);
     this.art = buildMothershipArtwork(this, this.state, HOME.x, HOME.y);
     this.setArtworkOpacity(roofAlpha);
     if (!this.dockRing) {
@@ -197,22 +223,69 @@ export class FlightScene extends Phaser.Scene {
   }
 
   private drawBackground(): void {
-    const g = this.add.graphics().setDepth(-50);
-    g.fillGradientStyle(0x09090a,0x050506,0x080809,0x030303);
-    g.fillRect(0, 0, WORLD.width, WORLD.height);
-    let seed = 41097;
-    const rand = (): number => { seed = seed * 16807 % 2147483647; return seed / 2147483647; };
-    for (let i = 0; i < 850; i++) {
-      g.fillStyle(rand() > .8 ? 0xe8e8e8 : 0x757577, .10 + rand() * .48);
-      g.fillCircle(rand() * WORLD.width, rand() * WORLD.height, rand() > .95 ? 1.5 : .6);
+    const base=this.add.graphics().setDepth(-80);
+    base.fillGradientStyle(0x080809,0x050506,0x0a0a0b,0x020203);
+    base.fillRect(0,0,WORLD.width,WORLD.height);
+
+    let seed=9060;
+    const rnd=():number=>{
+      seed=(Math.imul(seed,1664525)+1013904223)>>>0;
+      return seed/4294967296;
+    };
+
+    // Immense softly graded gas fields, almost black. Nested ellipses simulate
+    // the nebula glow without images, heavy filters, or a giant screenshot.
+    const clouds=[
+      {x:HOME.x+1100,y:HOME.y-950,w:1300,h:740},
+      {x:HOME.x-1200,y:HOME.y+850,w:1500,h:1020},
+      {x:HOME.x+300,y:HOME.y+1050,w:650,h:490},
+    ];
+    for(const cloud of clouds){
+      for(let layer=11;layer>=1;layer--){
+        base.fillStyle(layer%2?0x7a7a83:0x9d9d9f,(12-layer)*.0035);
+        base.fillEllipse(cloud.x,cloud.y,cloud.w*layer/12,cloud.h*layer/12);
+      }
     }
-    g.lineStyle(1, 0x7a7a7a, .035);
-    for (let x = 0; x < WORLD.width; x += 200) g.lineBetween(x, 0, x, WORLD.height);
-    for (let y = 0; y < WORLD.height; y += 200) g.lineBetween(0, y, WORLD.width, y);
-    g.lineStyle(1, 0x888888, .065);
-    g.strokeCircle(HOME.x, HOME.y, 920);
-    g.strokeCircle(HOME.x, HOME.y, 1250);
-    // Leave world labels to the interface. Nothing decorative competes with the ship.
+
+    // Three depths of white star fields with different parallax. UI belongs
+    // above these; no tiled editor grid or floating system text.
+    const far=this.add.graphics().setDepth(-70).setScrollFactor(.96);
+    for(let i=0;i<960;i++){
+      const x=rnd()*WORLD.width,y=rnd()*WORLD.height;
+      const alpha=.12+rnd()*.58,r=rnd()>.965?1.4:.35+rnd()*.48;
+      far.fillStyle(rnd()>.87?0xf1f1f1:0x929296,alpha);
+      far.fillCircle(x,y,r);
+    }
+    const nearer=this.add.graphics().setDepth(-62).setScrollFactor(.88);
+    for(let i=0;i<155;i++){
+      const x=rnd()*WORLD.width,y=rnd()*WORLD.height;
+      const r=1+rnd()*1.5;
+      nearer.fillStyle(0xe4e4e7,.08+rnd()*.36);
+      nearer.fillCircle(x,y,r);
+      if(i%25===0){
+        nearer.lineStyle(.6,0xe4e4e7,.13);
+        nearer.lineBetween(x-5,y,x+5,y);
+        nearer.lineBetween(x,y-5,x,y+5);
+      }
+    }
+
+    // Sparse drifting logo-like craft/shards echo the ARROW experience page.
+    const motes=this.add.graphics().setDepth(-50).setScrollFactor(.78);
+    for(let i=0;i<38;i++){
+      const x=rnd()*WORLD.width,y=rnd()*WORLD.height,s=2+rnd()*5;
+      const alpha=.1+rnd()*.18;
+      motes.fillStyle(0xc9c9cb,alpha);
+      motes.fillTriangle(x+s,y,x-s*.7,y-s*.54,x-s*.32,y);
+      motes.fillTriangle(x+s,y,x-s*.7,y+s*.54,x-s*.32,y);
+    }
+
+    // Navigation halo stays at physical home, deliberately almost invisible.
+    const navigation=this.add.graphics().setDepth(-45);
+    navigation.lineStyle(.75,0xbdbdbf,.045);
+    navigation.strokeCircle(HOME.x,HOME.y,900);
+    navigation.strokeCircle(HOME.x,HOME.y,1390);
+    navigation.lineStyle(.75,0x9e9ea0,.028);
+    navigation.strokeCircle(HOME.x,HOME.y,1800);
   }
 
   private makeAsteroid(asteroid: Asteroid): Phaser.GameObjects.Container {
@@ -239,19 +312,33 @@ export class FlightScene extends Phaser.Scene {
     return object;
   }
 
+  /** Every craft uses the exact same 4-vertex mark as the ARROW website. */
   private makeShip(ship: Ship): Phaser.GameObjects.Container {
     const view = this.add.container(ship.x, ship.y).setDepth(19);
     const g = this.add.graphics();
-    const size = shipBerthSpan(ship) > 1 ? 1.22 : 1;
-    g.fillStyle(ship.id==='scout'?0xf4f4f4:0xbbbbbd,.96);
-    g.lineStyle(1.8,0xffffff,.95);
-    g.beginPath();g.moveTo(30,0);g.lineTo(-16,-17);g.lineTo(-9,-3);
-    g.lineTo(-16,17);g.closePath();g.fillPath();g.strokePath();
-    g.fillStyle(0x121214,1);g.fillTriangle(-6,-8,12,0,-6,8);
-    g.fillStyle(0x99999b,.8);g.fillTriangle(-16,-7,-31,0,-16,7);
-    g.lineStyle(1,0x6a879f,.8);g.lineBetween(-11,0,-23,0);
-    view.add(g); view.setScale(size);
-    const label = this.add.text(ship.x,ship.y-42,ship.name,{
+    const size = hullSize(ship);
+    const outline = arrowOutline(size.length,size.widthScale);
+    g.fillStyle(ship.id==='scout'?0xf7f7f7:0xcacacc,1);
+    g.lineStyle(1.4,0xffffff,.95);
+    g.beginPath();
+    outline.forEach(([x,y],i)=>{if(i===0)g.moveTo(x,y);else g.lineTo(x,y);});
+    g.closePath();g.fillPath();g.strokePath();
+    // Subtle material seams and the recognizable inward tail notch remain.
+    g.lineStyle(1,0x666669,.77);
+    g.lineBetween(-size.length*.30,-size.length*.11,size.length*.25,0);
+    g.lineBetween(-size.length*.30,size.length*.11,size.length*.25,0);
+    g.fillStyle(0x101012,.92);
+    g.fillTriangle(size.length*.17,-size.length*.047,size.length*.38,0,size.length*.17,size.length*.047);
+    if(/miner|industrial/i.test(ship.role)){
+      g.lineStyle(2,0x8b8b8d,.86);
+      g.lineBetween(-size.length*.25,-size.length*.27,-size.length*.08,-size.length*.19);
+      g.lineBetween(-size.length*.25,size.length*.27,-size.length*.08,size.length*.19);
+      g.fillStyle(0xebebec,.8);
+      g.fillCircle(-size.length*.13,-size.length*.21,3);
+      g.fillCircle(-size.length*.13,size.length*.21,3);
+    }
+    view.add(g);
+    const label = this.add.text(ship.x,ship.y-51,ship.name,{
       fontFamily:'Inter, sans-serif',fontSize:'12px',color:'#d8d8da',
     }).setOrigin(.5).setDepth(20);
     view.setData('label',label);
@@ -311,8 +398,13 @@ export class FlightScene extends Phaser.Scene {
     v.x*=drag;v.y*=drag;
     const speed=Math.hypot(v.x,v.y);
     if(speed>ship.speed){v.x*=ship.speed/speed;v.y*=ship.speed/speed;}
-    ship.x=Phaser.Math.Clamp(ship.x+v.x*dt,35,WORLD.width-35);
-    ship.y=Phaser.Math.Clamp(ship.y+v.y*dt,35,WORLD.height-35);
+    const resolved=resolveHullMovement(ship,{
+      x:Phaser.Math.Clamp(ship.x+v.x*dt,35,WORLD.width-35),
+      y:Phaser.Math.Clamp(ship.y+v.y*dt,35,WORLD.height-35),
+    },this.state);
+    if(Math.abs(resolved.x-ship.x)<.001)v.x=0;
+    if(Math.abs(resolved.y-ship.y)<.001)v.y=0;
+    ship.x=resolved.x;ship.y=resolved.y;
     this.velocity.set(ship.id,v);
     const pointer=this.input.activePointer;
     if(this.virtualMove.x||this.virtualMove.y){
@@ -323,7 +415,6 @@ export class FlightScene extends Phaser.Scene {
   }
 
   private stepMining(dt:number):void {
-    this.beam.clear();
     const ship=activeShip(this.state);
     if(ship.docked)return;
     let target: Asteroid | undefined;
@@ -340,98 +431,171 @@ export class FlightScene extends Phaser.Scene {
     if(!target || distance(ship,target)>MINE_RANGE)return;
     const mined=extractOre(this.state,ship,target,dt*ship.miningRate);
     if(mined>0){
-      this.beam.lineStyle(8,0x7bbae8,.15);
-      this.beam.lineBetween(ship.x,ship.y,target.x,target.y);
-      this.beam.lineStyle(2,0xeaf7ff,.9);
-      this.beam.lineBetween(ship.x,ship.y,target.x,target.y);
+      this.miningEffects.fire(ship,target,mined);
     }
   }
 
   /** Smoothly move a ship and camera through a single cinematic sequence. */
-  private animateShip(ship:Ship, end:Point, duration:number, endZoom:number,
+  /** A subtle physical tether originates from the shoulder's tractor emitter. */
+  private drawTractor(ship:Ship, progress:number):void {
+    this.tractorBeam.clear();
+    const port=dockingPort(this.state);
+    const sx=port.tractor.x;
+    const sy=port.tractor.y;
+    const dx=ship.x-sx,dy=ship.y-sy,dist=Math.hypot(dx,dy);
+    if(dist<6)return;
+    const ux=dx/dist,uy=dy/dist,px=-uy,py=ux;
+    const grow=Math.min(1,progress*3.5);
+    const endX=sx+dx*grow,endY=sy+dy*grow;
+    const width=8+Math.sin(this.tractorPhase*4)*1.5;
+    this.tractorBeam.fillStyle(0xeaeaea,.075);
+    this.tractorBeam.fillTriangle(
+      sx+px*width*2,sy+py*width*2,
+      sx-px*width*2,sy-py*width*2,
+      endX,endY,
+    );
+    this.tractorBeam.lineStyle(2.2,0xffffff,.58);
+    this.tractorBeam.lineBetween(sx,sy,endX,endY);
+    this.tractorBeam.lineStyle(.9,0xe3e3e3,.68);
+    this.tractorBeam.lineBetween(sx+px*4,sy+py*4,endX,endY);
+    this.tractorBeam.lineBetween(sx-px*4,sy-py*4,endX,endY);
+    // An energy pulse travels along the tether, not a static light stick.
+    const p=(this.tractorPhase*1.5)%1;
+    this.tractorBeam.fillStyle(0xffffff,.55);
+    this.tractorBeam.fillCircle(sx+dx*p,sy+dy*p,3.2);
+    this.tractorBeam.lineStyle(1,0xffffff,.3);
+    this.tractorBeam.strokeCircle(endX,endY,7+2*Math.sin(this.tractorPhase*5));
+  }
+
+  /**
+   * Fly each segment with speed derived from distance. Align the nose to the
+   * direction of travel instead of teleporting or forcing the same heading.
+   * Travel never moves through the opaque central hull.
+   */
+  private flyRoute(ship:Ship, waypoints:DockWaypoint[], leaving:boolean,
       onComplete:()=>void):void {
-    const camera=this.cameras.main;
-    const from={x:ship.x,y:ship.y,zoom:camera.zoom,scrollX:camera.scrollX,scrollY:camera.scrollY};
-    const tween=this.tweens.addCounter({
-      from:0,to:1,duration,ease:'Sine.InOut',
-      onUpdate:(t)=>{
-        const progress=t.getValue() ?? 0;
-        ship.x=Phaser.Math.Linear(from.x,end.x,progress);
-        ship.y=Phaser.Math.Linear(from.y,end.y,progress);
-        ship.angle=-Math.PI/2;
-        camera.setZoom(Phaser.Math.Linear(from.zoom,endZoom,progress));
-        const viewX=Phaser.Math.Linear(from.x,end.x,progress);
-        const viewY=Phaser.Math.Linear(from.y,end.y,progress);
-        camera.centerOn(viewX,viewY);
-      },
-      onComplete,
-    });
-    void tween;
+    let index=0,previousStage='';
+    const next=():void=>{
+      if(index>=waypoints.length){
+        this.tractorBeam.clear();
+        onComplete();
+        return;
+      }
+      const destination=waypoints[index++];
+      if(destination.stage!==previousStage){
+        previousStage=destination.stage;
+        if(!leaving&&destination.stage==='tractor'){
+          this.setAirlock(true);
+          this.announce('TRACTOR LOCK · AIRLOCK OPENING');
+        }
+        if(!leaving&&destination.stage==='taxi'){
+          if(this.art){
+            this.tweens.add({targets:this.art.roof,alpha:0,duration:900,ease:'Sine.InOut'});
+            this.tweens.add({targets:this.art.interior,alpha:1,duration:900,ease:'Sine.InOut'});
+          }
+        }
+        if(leaving&&destination.stage==='clearance'){
+          this.setAirlock(false);
+          if(this.art){
+            this.tweens.add({targets:this.art.roof,alpha:1,duration:950,ease:'Sine.InOut'});
+            this.tweens.add({targets:this.art.interior,alpha:0,duration:950,ease:'Sine.InOut'});
+          }
+        }
+      }
+      const start={x:ship.x,y:ship.y,heading:ship.angle,zoom:this.cameras.main.zoom};
+      const targetHeading=destination.heading ??
+        Math.atan2(destination.point.y-start.y,destination.point.x-start.x);
+      const heading=shortestAngle(start.heading,targetHeading);
+      const duration=segmentDuration(start,destination.point,destination.speed);
+      const targetZoom=this.flightZoom()*(
+        destination.stage==='align'?.89:
+        destination.stage==='approach'?1.04:
+        destination.stage==='tractor'?1.16:
+        destination.stage==='entry'?1.23:1.12
+      );
+      this.tweens.addCounter({
+        from:0,to:1,duration,
+        ease:destination.stage==='taxi'?'Sine.InOut':'Linear',
+        onUpdate:(t)=>{
+          const p=t.getValue()??0;
+          ship.x=Phaser.Math.Linear(start.x,destination.point.x,p);
+          ship.y=Phaser.Math.Linear(start.y,destination.point.y,p);
+          ship.angle=Phaser.Math.Linear(start.heading,heading,Math.min(1,p*2.1));
+          this.cameras.main.setZoom(Phaser.Math.Linear(start.zoom,targetZoom,p));
+          this.cameras.main.centerOn(ship.x,ship.y);
+          if(inTractorStage(destination.stage)){
+            this.tractorPhase+=.022;
+            this.drawTractor(ship,p);
+          }else{
+            this.tractorBeam.clear();
+          }
+        },
+        onComplete:next,
+      });
+    };
+    next();
   }
 
   private animateCameraTo(target:Point, targetZoom:number, duration:number,
       onComplete?:()=>void):void {
     const camera=this.cameras.main;
     const start={x:camera.midPoint.x,y:camera.midPoint.y,zoom:camera.zoom};
-    // Camera.midPoint follows centerOn on every tween update.
     this.tweens.addCounter({
       from:0,to:1,duration,ease:'Sine.InOut',
       onUpdate:(t)=>{
-        const p=t.getValue() ?? 0;
+        const p=t.getValue()??0;
         camera.setZoom(Phaser.Math.Linear(start.zoom,targetZoom,p));
-        camera.centerOn(Phaser.Math.Linear(start.x,target.x,p),Phaser.Math.Linear(start.y,target.y,p));
+        camera.centerOn(
+          Phaser.Math.Linear(start.x,target.x,p),
+          Phaser.Math.Linear(start.y,target.y,p),
+        );
       },
       onComplete,
     });
   }
 
-  /** Cinematic landing: approach roof hatch, dissolve armor, taxi to unique berth. */
   private beginDocking():void {
     if(this.mode!=='flight')return;
     const ship=activeShip(this.state);
     if(ship.docked)return;
     if(distance(ship,HOME)>DOCK_RADIUS){
-      this.announce('APPROACH MOTHERSHIP BEFORE REQUESTING DOCKING');return;
+      this.announce('MOVE CLOSER TO THE MOTHERSHIP TO DOCK');return;
     }
-    const slot=findAvailableBerth(this.state,ship);
-    if(slot===null){this.announce('HANGAR FULL · EXPAND OR UPGRADE THE HANGAR');return;}
+    const berth=findAvailableBerth(this.state,ship);
+    if(berth===null){
+      this.announce('HANGAR FULL · EXPAND THE HANGAR TO DOCK');return;
+    }
+    // Read the real berth position without modifying the ship or the save.
+    const parked={...ship,berth};
+    const destination=berthWorldPosition(parked);
+    const waypoints=dockingRoute(ship,destination,dockingPort(this.state));
     this.cameraTouched=false;
     this.cameras.main.stopFollow();
     this.setViewMode('transition');
-    this.announce('AUTODOCK ENGAGED · ALIGNING WITH HANGAR 01');
-    this.animateShip(ship,MOTHERSHIP.approach,1100,this.flightZoom()*1.08,()=>{
-      this.animateShip(ship,MOTHERSHIP.entrance,850,this.flightZoom()*1.25,()=>{
-        if(!this.art)return;
-        this.tweens.add({targets:this.art.roof,alpha:0,duration:1050,ease:'Sine.InOut'});
-        this.tweens.add({targets:this.art.interior,alpha:1,duration:1050,ease:'Sine.InOut'});
-        const local=berthLocalPosition(slot,shipBerthSpan(ship));
-        const destination={x:HOME.x+local.x,y:HOME.y+local.y};
-        this.announce('HANGAR OPEN · BAY '+String(slot+1).padStart(2,'0')+' RESERVED');
-        this.animateShip(ship,destination,1550,this.flightZoom()*1.1,()=>{
-          const result=dockShip(this.state,ship);
-          if(result!=='docked'){
-            this.setArtworkOpacity(1);
-            this.setViewMode('flight');
-            this.refreshCameraZoom();
-            this.announce('DOCKING CANCELED · '+result.toUpperCase());
-            return;
-          }
-          ship.angle=0;
-          this.animateCameraTo(this.interiorFocus(),this.interiorZoom(),1300,()=>{
-            this.setArtworkOpacity(0);
-            this.setViewMode('interior');
-            this.cameraTouched=false;
-            this.refreshCameraZoom();
-            this.onStateChange();
-            this.saving();
-            this.announce('DOCKING COMPLETE · PARKED IN BAY '+String((ship.berth??0)+1).padStart(2,'0'));
-          });
-        });
+    this.announce('AUTOPILOT · ALIGNING WITH SIDE HANGAR');
+    this.flyRoute(ship,waypoints,false,()=>{
+      const result=dockShip(this.state,ship);
+      if(result!=='docked'){
+        this.setArtworkOpacity(1);
+        this.setViewMode('flight');
+        this.refreshCameraZoom();
+        this.announce('DOCKING CANCELLED · '+result.toUpperCase());
+        return;
+      }
+      // The destination exactly matches berthWorldPosition(). No position jump.
+      ship.angle=0;
+      this.animateCameraTo(this.interiorFocus(),this.interiorZoom(),1150,()=>{
+        this.setArtworkOpacity(0);
+        this.setViewMode('interior');
+        this.cameraTouched=false;
+        this.refreshCameraZoom();
+        this.onStateChange();
+        this.saving();
+        this.announce('PARKED · BAY '+String((ship.berth??0)+1).padStart(2,'0'));
       });
     });
   }
 
-  /** Launch is the same continuous world sequence played outward. */
   private beginLaunching():void {
     if(this.mode!=='interior')return;
     const ship=activeShip(this.state);
@@ -439,23 +603,22 @@ export class FlightScene extends Phaser.Scene {
     this.cameraTouched=false;
     this.cameras.main.stopFollow();
     this.setViewMode('transition');
-    this.announce('HANGAR DEPARTURE AUTHORIZED · OPENING AIRLOCK');
-    this.animateShip(ship,MOTHERSHIP.entrance,1500,this.flightZoom()*1.23,()=>{
-      if(this.art){
-        this.tweens.add({targets:this.art.roof,alpha:1,duration:1060,ease:'Sine.InOut'});
-        this.tweens.add({targets:this.art.interior,alpha:0,duration:1060,ease:'Sine.InOut'});
-      }
-      this.animateShip(ship,MOTHERSHIP.departure,1300,this.flightZoom(),()=>{
-        launchShip(ship);
-        this.setArtworkOpacity(1);
-        this.setViewMode('flight');
-        this.cameras.main.setZoom(this.flightZoom());
-        this.cameraAnchor.setPosition(ship.x,ship.y);
-        this.cameras.main.startFollow(this.cameraAnchor,true,.09,.09);
-        this.onStateChange();
-        this.saving();
-        this.announce('LAUNCH COMPLETE · YOU ARE CLEAR OF THE MOTHERSHIP');
-      });
+    this.announce('UNDOCKING · RELEASE CLAMPS');
+    const port=dockingPort(this.state);
+    this.flyRoute(ship,departureRoute(ship,port),true,()=>{
+      launchShip(ship);
+      // Align the launch result with the actual expanded airlock, not the
+      // original level-one departure location.
+      ship.x=port.departure.x;
+      ship.y=port.departure.y;
+      this.setArtworkOpacity(1);
+      this.setViewMode('flight');
+      this.cameras.main.setZoom(this.flightZoom());
+      this.cameraAnchor.setPosition(ship.x,ship.y);
+      this.cameras.main.startFollow(this.cameraAnchor,true,.09,.09);
+      this.onStateChange();
+      this.saving();
+      this.announce('CLEAR OF MOTHERSHIP · MANUAL CONTROL');
     });
   }
 
@@ -497,7 +660,7 @@ export class FlightScene extends Phaser.Scene {
   }
   setControlsBlocked(blocked:boolean):void {
     this.controlsBlocked=blocked;
-    if(blocked&&this.beam)this.beam.clear();
+    if(blocked)this.miningEffects?.clear();
   }
 
   /** User may open the visual cutaway at any time when docked. */
@@ -554,13 +717,18 @@ export class FlightScene extends Phaser.Scene {
   }
 
   update(_time:number,delta:number):void {
-    const manualStep=Math.min(.05,Math.max(0,delta/1000));
+    // Rendering at 8 FPS must not reduce real piloting speed to one-quarter.
+    // Consume measured elapsed time in 50 ms substeps, while capping the
+    // longest foreground stall to avoid tunneling into the hull.
+    const manualSeconds=Math.min(.25,Math.max(0,delta/1000));
     this.updateTouchNavigation();
-    if(!this.controlsBlocked && this.mode!=='transition'){
-      // E and Q are handled centrally in main.ts, including when UI buttons have focus.
-      if(this.mode==='flight'){
-        this.stepManual(manualStep);
-        this.stepMining(manualStep);
+    if(!this.controlsBlocked && this.mode==='flight'){
+      let remaining=manualSeconds;
+      while(remaining>.000001){
+        const step=Math.min(.05,remaining);
+        this.stepManual(step);
+        this.stepMining(step);
+        remaining-=step;
       }
     }
     // Cinematics pause the autonomous fleet for a few seconds to reserve a
@@ -571,6 +739,7 @@ export class FlightScene extends Phaser.Scene {
       this.cameraAnchor.setPosition(ship.x,ship.y);
     }
     this.refreshViews();
+    this.miningEffects.update(delta/1000);
     this.timeToUpdateUI+=delta/1000;
     this.timeToSave+=elapsed;
     if(this.timeToUpdateUI>=.15){
