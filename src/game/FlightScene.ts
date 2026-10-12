@@ -204,22 +204,69 @@ export class FlightScene extends Phaser.Scene {
   }
 
   private drawBackground(): void {
-    const g = this.add.graphics().setDepth(-50);
-    g.fillGradientStyle(0x09090a,0x050506,0x080809,0x030303);
-    g.fillRect(0, 0, WORLD.width, WORLD.height);
-    let seed = 41097;
-    const rand = (): number => { seed = seed * 16807 % 2147483647; return seed / 2147483647; };
-    for (let i = 0; i < 850; i++) {
-      g.fillStyle(rand() > .8 ? 0xe8e8e8 : 0x757577, .10 + rand() * .48);
-      g.fillCircle(rand() * WORLD.width, rand() * WORLD.height, rand() > .95 ? 1.5 : .6);
+    const base=this.add.graphics().setDepth(-80);
+    base.fillGradientStyle(0x080809,0x050506,0x0a0a0b,0x020203);
+    base.fillRect(0,0,WORLD.width,WORLD.height);
+
+    let seed=9060;
+    const rnd=():number=>{
+      seed=(Math.imul(seed,1664525)+1013904223)>>>0;
+      return seed/4294967296;
+    };
+
+    // Immense softly graded gas fields, almost black. Nested ellipses simulate
+    // the nebula glow without images, heavy filters, or a giant screenshot.
+    const clouds=[
+      {x:HOME.x+1100,y:HOME.y-950,w:1300,h:740},
+      {x:HOME.x-1200,y:HOME.y+850,w:1500,h:1020},
+      {x:HOME.x+300,y:HOME.y+1050,w:650,h:490},
+    ];
+    for(const cloud of clouds){
+      for(let layer=11;layer>=1;layer--){
+        base.fillStyle(layer%2?0x7a7a83:0x9d9d9f,(12-layer)*.0035);
+        base.fillEllipse(cloud.x,cloud.y,cloud.w*layer/12,cloud.h*layer/12);
+      }
     }
-    g.lineStyle(1, 0x7a7a7a, .035);
-    for (let x = 0; x < WORLD.width; x += 200) g.lineBetween(x, 0, x, WORLD.height);
-    for (let y = 0; y < WORLD.height; y += 200) g.lineBetween(0, y, WORLD.width, y);
-    g.lineStyle(1, 0x888888, .065);
-    g.strokeCircle(HOME.x, HOME.y, 920);
-    g.strokeCircle(HOME.x, HOME.y, 1250);
-    // Leave world labels to the interface. Nothing decorative competes with the ship.
+
+    // Three depths of white star fields with different parallax. UI belongs
+    // above these; no tiled editor grid or floating system text.
+    const far=this.add.graphics().setDepth(-70).setScrollFactor(.96);
+    for(let i=0;i<960;i++){
+      const x=rnd()*WORLD.width,y=rnd()*WORLD.height;
+      const alpha=.12+rnd()*.58,r=rnd()>.965?1.4:.35+rnd()*.48;
+      far.fillStyle(rnd()>.87?0xf1f1f1:0x929296,alpha);
+      far.fillCircle(x,y,r);
+    }
+    const nearer=this.add.graphics().setDepth(-62).setScrollFactor(.88);
+    for(let i=0;i<155;i++){
+      const x=rnd()*WORLD.width,y=rnd()*WORLD.height;
+      const r=1+rnd()*1.5;
+      nearer.fillStyle(0xe4e4e7,.08+rnd()*.36);
+      nearer.fillCircle(x,y,r);
+      if(i%25===0){
+        nearer.lineStyle(.6,0xe4e4e7,.13);
+        nearer.lineBetween(x-5,y,x+5,y);
+        nearer.lineBetween(x,y-5,x,y+5);
+      }
+    }
+
+    // Sparse drifting logo-like craft/shards echo the ARROW experience page.
+    const motes=this.add.graphics().setDepth(-50).setScrollFactor(.78);
+    for(let i=0;i<38;i++){
+      const x=rnd()*WORLD.width,y=rnd()*WORLD.height,s=2+rnd()*5;
+      const alpha=.1+rnd()*.18;
+      motes.fillStyle(0xc9c9cb,alpha);
+      motes.fillTriangle(x+s,y,x-s*.7,y-s*.54,x-s*.32,y);
+      motes.fillTriangle(x+s,y,x-s*.7,y+s*.54,x-s*.32,y);
+    }
+
+    // Navigation halo stays at physical home, deliberately almost invisible.
+    const navigation=this.add.graphics().setDepth(-45);
+    navigation.lineStyle(.75,0xbdbdbf,.045);
+    navigation.strokeCircle(HOME.x,HOME.y,900);
+    navigation.strokeCircle(HOME.x,HOME.y,1390);
+    navigation.lineStyle(.75,0x9e9ea0,.028);
+    navigation.strokeCircle(HOME.x,HOME.y,1800);
   }
 
   private makeAsteroid(asteroid: Asteroid): Phaser.GameObjects.Container {
