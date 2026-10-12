@@ -123,10 +123,27 @@ export class FlightScene extends Phaser.Scene {
       'SHIP CONTROL ONLINE · RETURN TO THE MOTHERSHIP TO DOCK');
   }
 
+  private setAirlock(open:boolean,animate=true):void {
+    if(!this.art)return;
+    const {doorCenterX,doorLeft,doorRight}=this.art;
+    const distance=29+(open?45:0);
+    this.tweens.killTweensOf([doorLeft,doorRight]);
+    if(!animate){
+      doorLeft.x=doorCenterX-distance;
+      doorRight.x=doorCenterX+distance;
+      return;
+    }
+    this.tweens.add({targets:doorLeft,x:doorCenterX-distance,
+      duration:700,ease:'Sine.InOut'});
+    this.tweens.add({targets:doorRight,x:doorCenterX+distance,
+      duration:700,ease:'Sine.InOut'});
+  }
+
   private setArtworkOpacity(roofAlpha: number): void {
     if (!this.art) return;
     this.art.roof.setAlpha(roofAlpha);
     this.art.interior.setAlpha(1 - roofAlpha);
+    this.setAirlock(roofAlpha<.5,false);
   }
 
   /** Rebuild exterior and interior artwork after the player changes rooms. */
@@ -134,6 +151,7 @@ export class FlightScene extends Phaser.Scene {
     const roofAlpha = this.mode === 'interior' ? 0 : 1;
     this.art?.roof.destroy(true);
     this.art?.interior.destroy(true);
+    this.art?.doors.destroy(true);
     this.art = buildMothershipArtwork(this, this.state, HOME.x, HOME.y);
     this.setArtworkOpacity(roofAlpha);
     if (!this.dockRing) {
@@ -467,7 +485,8 @@ export class FlightScene extends Phaser.Scene {
       if(destination.stage!==previousStage){
         previousStage=destination.stage;
         if(!leaving&&destination.stage==='tractor'){
-          this.announce('TRACTOR LOCK · GUIDING FINAL APPROACH');
+          this.setAirlock(true);
+          this.announce('TRACTOR LOCK · AIRLOCK OPENING');
         }
         if(!leaving&&destination.stage==='taxi'){
           if(this.art){
@@ -476,6 +495,7 @@ export class FlightScene extends Phaser.Scene {
           }
         }
         if(leaving&&destination.stage==='clearance'){
+          this.setAirlock(false);
           if(this.art){
             this.tweens.add({targets:this.art.roof,alpha:1,duration:950,ease:'Sine.InOut'});
             this.tweens.add({targets:this.art.interior,alpha:0,duration:950,ease:'Sine.InOut'});
