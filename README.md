@@ -9,6 +9,14 @@
 
 > This README is a **design specification**, not a statement that these systems are already implemented. Sections distinguish **agreed direction**, **proposed implementation**, and **open decisions**. Numbers and sample names are placeholders for balancing.
 
+## v0.5 · Minimal ARROW UI Reset
+
+**FRONTIER's frontend has been rebuilt** to match the core ARROW design language: black, white, restrained typography and simple navigation. Flight, Fleet, Build and Mothership Interior have clear, distinct purposes rather than a permanent collection of sci-fi dashboards. The mothership now renders its rooms from the same physical 6×4 coordinates used for construction, and you can click connected deck positions directly while building.
+
+Phones have actual touch movement and mining controls. The camera accounts for the interface, ships accelerate and decelerate more naturally, and interrupted docking saves are protected or recovered. Existing simulation, resource, RAVIN fleet, and ship upgrade mechanics are retained.
+
+See [v0.5 design and implementation notes](docs/ARROW-UI-RESET-V05.md) for details. This remains an early private-universe prototype rather than a feature-complete game.
+
 ## v0.4 · Cinematic Hangar & Ship-Scale Navigation
 
 **Playable improvement:** FRONTIER now has a vastly larger arrow-shaped mothership with a real, detailed hangar. Your piloted vessel approaches an upper airlock, the opaque roof fades into a cutaway, the ship slides into its own size-compatible parking berth and the camera zooms out to reveal the mothership interior. Launching reverses the physical transition. Other docked ships occupy separate marked bays. Expanding or upgrading the hangar adds parking capacity, with larger classes requiring multiple adjacent berth units.
