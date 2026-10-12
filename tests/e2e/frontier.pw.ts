@@ -9,6 +9,9 @@ test('real desktop flight, departure, side docking and interior controls', async
   await expect(page.locator('body')).toHaveAttribute('data-frontier-view','interior');
   await expect(page.locator('#hangar-launch-btn')).toBeVisible();
   await expect(page.locator('#hangar-occupancy')).toContainText('BAYS');
+  // The world should be visible immediately; no unrequested onboarding
+  // toast or giant bright overlay may cover the mothership.
+  await expect(page.locator('#toast')).not.toHaveClass(/visible/);
   await page.screenshot({path:'test-results/v06-desktop-interior.png'});
 
   await page.locator('#hangar-launch-btn').click();
