@@ -117,45 +117,72 @@ export function buildMothershipArtwork(scene:Phaser.Scene,state:GameState,
   }
   label(scene,interior,-226,258,'ENGINEERING DECK',11,'#85858b');
 
-  // The official mark's hollowed rear splits into two engine assemblies.
+  // Propulsion and bridge are SHIP ARCHITECTURE, not floating cards.
+  // Vector housings, recessed nozzles and conduits establish mechanical depth.
   for(const side of [-1,1]){
     const y=side*293;
-    structural.fillStyle(0x242426,1);
-    structural.lineStyle(2,0xbbbcbf,.9);
-    structural.fillRoundedRect(-515,y-48,189,96,9);
-    structural.strokeRoundedRect(-515,y-48,189,96,9);
-    structural.lineStyle(1,0x828286,.68);
-    for(let i=0;i<4;i++) structural.lineBetween(-487+i*29,y-30,-487+i*29,y+30);
-    structural.fillStyle(0xe2e2e2,.5);
-    structural.fillCircle(-445,y,15);
-    label(scene,interior,-401,y+30,'PROPULSION',9,'#b9b9bc');
+    path(structural,[
+      [-613,y-37],[-542,y-66],[-378,y-66],[-302,y-19],
+      [-302,y+19],[-378,y+66],[-542,y+66],[-613,y+37],
+    ],0x252529,0x98989c,1.8);
+    path(structural,[
+      [-596,y-24],[-530,y-43],[-390,y-43],[-347,y-17],
+      [-347,y+17],[-390,y+43],[-530,y+43],[-596,y+24],
+    ],0x141417,0x545459,1.1);
+    // Three heat-shielded exhaust chambers are grouped at the stern.
+    for(let i=-1;i<=1;i++){
+      const nozzleY=y+i*19;
+      structural.fillStyle(0x0b0b0c,1);
+      structural.lineStyle(2,0xc2c2c6,.73);
+      structural.fillEllipse(-612,nozzleY,23,15);
+      structural.strokeEllipse(-612,nozzleY,23,15);
+      structural.fillStyle(0xcfcfd2,.16);
+      structural.fillEllipse(-617,nozzleY,11,7);
+    }
+    for(let i=0;i<7;i++){
+      const x=-540+i*25;
+      structural.lineStyle(2,0xa4a4aa,.43);
+      structural.lineBetween(x,y-40,x+8,y+40);
+    }
+    structural.lineStyle(2.5,0xc1c1c4,.45);
+    structural.lineBetween(-370,y-23,-275,side*45);
+    structural.lineStyle(1.1,0x82828b,.45);
+    structural.lineBetween(-360,y+23,-265,side*34);
+    // Small etched identifier belongs to the hardware surface.
+    label(scene,interior,-453,y,'ENGINE '+(side<0?'A':'B'),9,'#94949a');
   }
 
-  // The point of the arrow is always the fixed command centre.
-  structural.fillStyle(0x28282b,1);
-  structural.lineStyle(2,0xceced0,.78);
-  structural.fillRoundedRect(278,-47,135,94,13);
-  structural.strokeRoundedRect(278,-47,135,94,13);
-  structural.lineStyle(1,0xbbbbbd,.7);
-  structural.lineBetween(310,-23,385,-23);
-  structural.lineBetween(310,-9,385,-9);
-  label(scene,interior,348,22,'COMMAND',10,'#dedee0');
+  // The narrow nose holds the fixed command bridge. Layered wedge panels
+  // follow the actual ARROW tip, rather than a rounded rectangle.
+  path(structural,[
+    [251,-55],[348,-47],[486,0],[348,47],[251,55],[291,0],
+  ],0x29292c,0xb8b8ba,1.8);
+  path(structural,[
+    [305,-32],[363,-26],[448,0],[363,26],[305,32],[328,0],
+  ],0x111113,0x68686e,1.4);
+  structural.lineStyle(1.3,0xd3d3d5,.48);
+  structural.lineBetween(341,-22,391,0);
+  structural.lineBetween(341,22,391,0);
+  structural.lineBetween(376,-17,408,0);
+  structural.lineBetween(376,17,408,0);
+  label(scene,interior,345,0,'BRIDGE',11,'#d5d5d8');
 
-  // A dedicated fusion room is not one more floating Build-grid card.
+  // A dedicated fusion room in the rearward engineering sector.
   const reactor=scene.add.graphics();interior.add(reactor);
-  reactor.fillStyle(0x222227,1);
-  reactor.lineStyle(2,0x9a9aa1,.66);
-  reactor.fillRoundedRect(-379,65,86,105,10);
-  reactor.strokeRoundedRect(-379,65,86,105,10);
-  reactor.lineStyle(2,0xe5e5e7,.64);
-  reactor.strokeCircle(-335,112,24);
-  reactor.strokeCircle(-335,112,16);
-  reactor.fillStyle(0xeeeeef,.7);
-  reactor.fillCircle(-335,112,5);
-  reactor.lineStyle(1,0xaaaab0,.37);
-  reactor.lineBetween(-335,88,-335,136);
-  reactor.lineBetween(-359,112,-311,112);
-  label(scene,interior,-335,155,'POWER CORE',9,'#b5b5b8');
+  reactor.fillStyle(0x18181b,1);
+  reactor.lineStyle(1.6,0x74747a,.72);
+  reactor.fillRoundedRect(-383,64,90,102,7);
+  reactor.strokeRoundedRect(-383,64,90,102,7);
+  reactor.lineStyle(2.3,0xe5e5e7,.68);
+  reactor.strokeCircle(-339,113,23);
+  reactor.strokeCircle(-339,113,13);
+  reactor.fillStyle(0xffffff,.73);
+  reactor.fillCircle(-339,113,4);
+  for(let i=-1;i<=1;i++){
+    reactor.lineStyle(1.2,0xaaaaaf,.53);
+    reactor.lineBetween(-385,113+i*17,-398,113+i*17);
+  }
+  label(scene,interior,-339,154,'REACTOR',9,'#a5a5a9');
 
   // Clear central utility spine connects the bridge and both hangar shoulders.
   structural.fillStyle(0x141416,1);
