@@ -23,7 +23,7 @@ function ringPoint(angle:number, radius:number):Point {
  * coordinates and no path straight through the solid capital ship.
  * Approach arcs are always outside the 700-unit clearance ring.
  */
-export function dockingRoute(from:Point, berth:Point,port:typeof MOTHERSHIP=MOTHERSHIP):DockWaypoint[] {
+export function dockingRoute(from:Point, berth:Point,port:Pick<typeof MOTHERSHIP,'entrance'|'approach'|'departure'>=MOTHERSHIP):DockWaypoint[] {
   const radius=780;
   const initial=Math.atan2(from.y-HOME.y,from.x-HOME.x);
   const final=Math.atan2(port.approach.y-HOME.y,port.approach.x-HOME.x);
@@ -50,7 +50,7 @@ export function dockingRoute(from:Point, berth:Point,port:typeof MOTHERSHIP=MOTH
  * Reverse the physical voyage. The berth stays reserved until the last stage
  * completes and the craft is outside the mothership clearance radius.
  */
-export function departureRoute(from:Point,port:typeof MOTHERSHIP=MOTHERSHIP):DockWaypoint[] {
+export function departureRoute(from:Point,port:Pick<typeof MOTHERSHIP,'entrance'|'approach'|'departure'>=MOTHERSHIP):DockWaypoint[] {
   return [
     {point:{x:from.x,y:HOME.y-180},stage:'taxi',speed:110},
     {point:{x:port.entrance.x,y:HOME.y-246},stage:'taxi',speed:135},
