@@ -6,7 +6,7 @@ import { activeShip, roundCargo } from './sim/engine';
 import { cargoTotal, distance, DOCK_RADIUS, HOME, storedTotal } from './sim/model';
 import { dockedBerthCount, hangarCapacity } from './sim/hangar';
 import { powerReport } from './sim/mothership';
-import { loadGame, saveGame } from './sim/persistence';
+import { loadGame, saveGame, resetGame } from './sim/persistence';
 import { BuilderUI } from './ui/BuilderUI';
 
 const loaded=loadGame();
@@ -222,6 +222,13 @@ $('fleet-build').addEventListener('click',()=>{
   builder.open();
 });
 $('save-toggle').addEventListener('click',()=>persist(true));
+$('reset-save').addEventListener('click',()=>{
+  if(scene.viewMode==='transition'){notice('Wait until docking finishes.');return;}
+  if(window.confirm('Restart this local universe? Your saved progress will be lost.')){
+    resetGame();
+    window.location.reload();
+  }
+});
 $('launch-btn').addEventListener('click',requestLaunchOrDock);
 $('dock-btn').addEventListener('click',requestLaunchOrDock);
 $('hangar-launch-btn').addEventListener('click',requestLaunchOrDock);
