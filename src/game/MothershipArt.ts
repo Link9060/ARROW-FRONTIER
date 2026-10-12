@@ -20,10 +20,6 @@ const INNER:XY[]=[
   [259,-145],[478,0],[259,145],[-76,293],
   [-280,299],[-409,163],[-490,157],[-387,0],
 ];
-const MONO={
-  floor:0x101011,body:0x171719,rail:0x77777b,
-  border:0xc4c4c5,ink:0xe7e7e6,muted:0x86868b,lit:0xffffff,
-};
 function path(g:Phaser.GameObjects.Graphics,pts:XY[],color:number,stroke:number,w=2):void{
   g.fillStyle(color,1);
   g.lineStyle(w,stroke,.85);
