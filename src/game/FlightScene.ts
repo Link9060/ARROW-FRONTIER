@@ -143,7 +143,8 @@ export class FlightScene extends Phaser.Scene {
     return { x: HOME.x + rightPanelOffset / Math.max(.25, zoomCss), y: HOME.y };
   }
   getCameraStatus(): { zoom: number; worldX: number; worldY: number } {
-    const camera=this.cameras.main;
+    const camera=this.cameras?.main;
+    if (!camera) return { zoom: 1, worldX: HOME.x, worldY: HOME.y };
     return {
       zoom: camera.zoom/this.deviceScale(),
       worldX: camera.midPoint.x,
