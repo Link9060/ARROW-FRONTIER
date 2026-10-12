@@ -45,12 +45,12 @@ export function hullSize(ship: Pick<Ship,'role'|'capacity'>): {
   length: number; widthScale: number;
 } {
   if (/miner|industrial|hauler/i.test(ship.role)) {
-    return { length: 85, widthScale: 1.08 };
+    return { length: 53, widthScale: 1.06 };
   }
   if (/heavy|capital|large/i.test(ship.role) || ship.capacity >= 180) {
-    return { length: 120, widthScale: 1.12 };
+    return { length: 82, widthScale: 1.1 };
   }
-  return { length: 59, widthScale: 1 };
+  return { length: 39, widthScale: 1 };
 }
 
 export function localToWorld(local: Point, center: Point, heading = 0): Point {
