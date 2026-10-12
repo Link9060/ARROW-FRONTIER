@@ -51,7 +51,7 @@ describe('v0.6 continuous docking route', () => {
     const route=dockingRoute(from,berth);
     expect(route.length).toBeGreaterThan(6);
     for(const waypoint of route.filter(item=>item.stage==='align')){
-      expect(distance(waypoint.point,HOME)).toBeCloseTo(780,7);
+      expect(distance(waypoint.point,HOME)).toBeCloseTo(770,7);
     }
     expect(route.map(w=>w.stage)).toContain('tractor');
     expect(route.map(w=>w.stage)).toContain('entry');
@@ -77,7 +77,7 @@ describe('v0.6 continuous docking route', () => {
     expect(segmentDuration(p,p,150)).toBe(80);
     expect(shortestAngle(3.12,-3.12)).toBeGreaterThan(3.12);
   });
-  it('an expanded hangar moves its real airlock, tractor and departure outward', () => {
+  it('hangar expansion adds real rows while the two side airlocks stay fitted inside the hull', () => {
     const game=makeNewGame();
     const starter=dockingPort(game);
     game.stored.iron=500;
@@ -85,9 +85,9 @@ describe('v0.6 continuous docking route', () => {
     game.stored.alloy=40;
     expect(buildRoom(game,'hangar',4,2)).toBeNull();
     const expanded=dockingPort(game);
-    expect(expanded.entrance.y).toBe(starter.entrance.y-138);
-    expect(expanded.tractor.y).toBe(starter.tractor.y-138);
-    expect(expanded.departure.y).toBe(starter.departure.y-138);
+    expect(expanded.entrance.y).toBe(starter.entrance.y);
+    expect(expanded.tractor.y).toBe(starter.tractor.y);
+    expect(expanded.departure.y).toBe(starter.departure.y);
     const berth=berthWorldPosition({...game.ships[0],berth:4});
     const inbound=dockingRoute({x:HOME.x+100,y:HOME.y+250},berth,expanded);
     expect(inbound.some(w=>w.stage==='entry'&&w.point.y===expanded.entrance.y)).toBe(true);
