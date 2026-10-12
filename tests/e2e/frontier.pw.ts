@@ -17,8 +17,13 @@ test('real desktop flight, departure, side docking and interior controls', async
 
   // Start outside the enlarged mothership hull. Approach in manual flight.
   await page.keyboard.down('s');
-  await page.waitForTimeout(1900);
-  await page.keyboard.up('s');
+  try {
+    await expect(page.locator('#pilot-tip')).toContainText('Within docking range',{
+      timeout:12_000,
+    });
+  } finally {
+    await page.keyboard.up('s');
+  }
   await page.locator('#dock-btn').click();
   await expect(page.locator('body')).toHaveAttribute('data-frontier-view','transition');
   await expect(page.locator('body')).toHaveAttribute('data-frontier-view','interior',{timeout:40_000});
