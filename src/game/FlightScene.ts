@@ -134,11 +134,7 @@ export class FlightScene extends Phaser.Scene {
       this.dockRing.strokeCircle(HOME.x, HOME.y, DOCK_RADIUS);
       this.dockRing.lineStyle(1, 0x7595b0, .13);
       this.dockRing.strokeCircle(HOME.x, HOME.y, DOCK_RADIUS + 20);
-      const dockMarker = this.add.text(MOTHERSHIP.entrance.x, MOTHERSHIP.entrance.y - 67,
-        'HANGAR 01 / APPROACH', {
-          fontFamily: 'monospace', fontSize: '13px', color: '#bad5e9', letterSpacing: 2,
-        }).setOrigin(.5).setDepth(5);
-      dockMarker.setData('purpose', 'hangar-entry');
+      // Entry is indicated by the actual roof airlock; no floating debug labels.
     }
   }
 
@@ -273,7 +269,11 @@ export class FlightScene extends Phaser.Scene {
       view.setRotation(ship.angle);
       const label=view.getData('label') as Phaser.GameObjects.Text;
       label.setPosition(ship.x,ship.y-43);
-      label.setVisible(visible);
+      // Flight already has an active-ship HUD. Hide duplicate active labels
+      // and nearby nonactive names that obscure asteroids and other vessels.
+      const active=activeShip(this.state);
+      label.setVisible(visible && (this.mode==='interior' ||
+        (ship.id!==active.id && distance(ship,active)>105)));
       label.setColor(ship.id===this.state.activeShipId?'#eeeeee':'#99999c');
     }
     for(const asteroid of this.state.asteroids){
