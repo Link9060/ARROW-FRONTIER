@@ -75,6 +75,26 @@ describe('background ships follow real side-hangar routes',()=>{
     expect(distance(restored,HOME)).toBeGreaterThan(690);
   });
 
+  it('reserves the player cinematic berth against simultaneous miner arrivals',()=>{
+    const state=makeNewGame(1000);
+    const scout=state.ships[0],miner=state.ships[1];
+    scout.docked=false;
+    scout.berth=0;
+    scout.navigation={
+      kind:'dock',side:'north',berth:0,step:0,
+      origin:{x:HOME.x+120,y:HOME.y-650},
+    };
+    scout.x=HOME.x+90;scout.y=HOME.y-560;
+    miner.x=HOME.x+55;miner.y=HOME.y-590;
+    expect(findAvailableBerth(state,miner)).toBe(2);
+    expect(dockShip(state,miner)).toBe('docked');
+    expect(miner.berth).toBe(2);
+    expect(findAvailableBerth(state,scout)).toBe(0);
+    expect(dockShip(state,scout)).toBe('docked');
+    expect(scout.berth).toBe(0);
+    expect(scout.navigation).toBeUndefined();
+  });
+
   it('recall during departure waits for the airlock to clear before safely docking',()=>{
     const {state,miner}=dockMiner();
     assignShipOrder(state,miner.id,'mine');
