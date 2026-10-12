@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { activeShip, dockShip, extractOre, launchShip, nearestDeposit, runAutomation, switchShip } from '../sim/engine';
 import { distance, HOME, MINE_RANGE, WORLD } from '../sim/model';
+import { MODULES, powerReport } from '../sim/mothership';
 import type { Asteroid, GameState, Ship } from '../sim/model';
 
 export class FlightScene extends Phaser.Scene {
@@ -8,6 +9,9 @@ export class FlightScene extends Phaser.Scene {
   private shipViews = new Map<string, Phaser.GameObjects.Container>();
   private asteroidViews = new Map<string, Phaser.GameObjects.Container>();
   private beam!: Phaser.GameObjects.Graphics;
+  private mothershipView?: Phaser.GameObjects.Container;
+  private dockRingDrawn = false;
+  private controlsBlocked = false;
   private overlay!: Phaser.GameObjects.Graphics;
   private state: GameState;
   private onStateChange: () => void;
@@ -80,53 +84,77 @@ export class FlightScene extends Phaser.Scene {
     }).setDepth(-1);
   }
 
-  private drawMothership(): void {
-    const ship = this.add.container(HOME.x, HOME.y).setDepth(3);
+  /** Rebuild the in-world mothership whenever its room layout changes. */
+  drawMothership(): void {
+    this.mothershipView?.destroy(true);
+    const ship = this.add.container(HOME.x, HOME.y).setDepth(4);
+    this.mothershipView = ship;
     const shape = this.add.graphics();
-    shape.lineStyle(2, 0xb6c5d8, 0.85);
-    shape.fillStyle(0x111c2a, 1);
-    shape.fillRoundedRect(-130, -79, 250, 156, 14);
-    shape.strokeRoundedRect(-130, -79, 250, 156, 14);
-
-    // Distinct visible compartments mimic the planned modular cutaway.
-    const cells = [
-      { x: -112, y: -60, w: 108, h: 48, t: 'COMMAND' },
-      { x: 4, y: -60, w: 98, h: 48, t: 'REACTOR' },
-      { x: -112, y: -4, w: 108, h: 48, t: 'STORAGE' },
-      { x: 4, y: -4, w: 98, h: 48, t: 'HANGAR' },
-    ];
-    for (const cell of cells) {
-      shape.lineStyle(1, 0x8fabc5, 0.36);
-      shape.fillStyle(0x152436, 1);
-      shape.fillRoundedRect(cell.x, cell.y, cell.w, cell.h, 5);
-      shape.strokeRoundedRect(cell.x, cell.y, cell.w, cell.h, 5);
-      const label = this.add.text(cell.x + cell.w / 2, cell.y + cell.h / 2, cell.t, {
-        fontFamily: 'monospace', fontSize: '9px', color: '#9eb6cb',
-      }).setOrigin(0.5);
-      ship.add(label);
-    }
+    shape.lineStyle(2, 0xb6c5d8, 0.8);
+    shape.fillStyle(0x101b29, 1);
+    shape.fillRoundedRect(-151, -89, 302, 178, 14);
+    shape.strokeRoundedRect(-151, -89, 302, 178, 14);
+    shape.lineStyle(1, 0x536e89, 0.29);
+    shape.fillStyle(0x152638, 0.8);
+    shape.fillRoundedRect(-165, -43, 22, 86, 7);
+    shape.strokeRoundedRect(-165, -43, 22, 86, 7);
     shape.lineStyle(2, 0xe6effb, 0.65);
-    shape.lineBetween(120, -47, 177, -22);
-    shape.lineBetween(120, 46, 177, 22);
-    shape.lineBetween(177, -22, 177, 22);
-    shape.fillStyle(0xa9cafa, 0.25);
-    shape.fillCircle(-145, 0, 26);
-    shape.fillStyle(0xf1f6ff, 0.85);
-    shape.fillCircle(-145, 0, 8);
-    ship.addAt(shape, 0);
+    shape.lineBetween(151, -37, 171, -18);
+    shape.lineBetween(151, 37, 171, 18);
+    shape.lineBetween(171, -18, 171, 18);
+    shape.fillStyle(0x96bce4, 0.2);
+    shape.fillCircle(-171, 0, 19);
+    shape.fillStyle(0xe2f2ff, 0.75);
+    shape.fillCircle(-171, 0, 7);
+    ship.add(shape);
 
-    ship.add(this.add.text(-125, 93, 'ARROW-01 / MOTHERSHIP', {
-      fontFamily: 'monospace', fontSize: '12px', color: '#f0f6ff', letterSpacing: 1,
+    const online = powerReport(this.state).onlineIds;
+    for (const room of this.state.rooms) {
+      const rx = -136 + room.x * 45;
+      const ry = -77 + room.y * 38;
+      const powered = online.has(room.id);
+      const compartment = this.add.graphics();
+      compartment.fillStyle(powered ? 0x1d364a : 0x111922, 1);
+      compartment.lineStyle(1, powered ? 0xabc8df : 0x5e7083, powered ? 0.65 : 0.27);
+      compartment.fillRoundedRect(rx, ry, 43, 35, 4);
+      compartment.strokeRoundedRect(rx, ry, 43, 35, 4);
+      if (room.type === 'reactor' && powered) {
+        compartment.fillStyle(0xd4eaff, 0.36);
+        compartment.fillCircle(rx + 21, ry + 10, 7 + (room.level - 1) * 1.5);
+      }
+      if (room.type === 'refinery' && powered) {
+        compartment.fillStyle(0xb6d2eb, 0.4);
+        compartment.fillRoundedRect(rx + 8, ry + 6, 27, 8, 2);
+      }
+      ship.add(compartment);
+      const code = this.add.text(rx + 21.5, ry + 21, MODULES[room.type].code, {
+        fontFamily: 'monospace', fontSize: '8px', color: powered ? '#f2f7ff' : '#5b7086',
+      }).setOrigin(0.5);
+      ship.add(code);
+      if (room.level > 1) ship.add(this.add.text(rx + 36, ry + 2, String(room.level), {
+        fontFamily: 'monospace', fontSize: '8px', color: '#d6e9ff',
+      }));
+    }
+    ship.add(this.add.text(-135, 98, 'ARROW-01 / MODULAR MOTHERSHIP', {
+      fontFamily: 'monospace', fontSize: '11px', color: '#f0f6ff', letterSpacing: 1,
     }));
+    if (!this.dockRingDrawn) {
+      const dock = this.add.graphics().setDepth(2);
+      dock.lineStyle(1, 0xc5d4e8, 0.22);
+      dock.strokeCircle(HOME.x, HOME.y, 190);
+      dock.lineStyle(1, 0x9cb4cc, 0.12);
+      dock.strokeCircle(HOME.x, HOME.y, 208);
+      this.add.text(HOME.x + 177, HOME.y - 98, 'DOCKING RADIUS', {
+        fontFamily: 'monospace', fontSize: '10px', color: '#627a90',
+      }).setDepth(3);
+      this.dockRingDrawn = true;
+    }
+  }
 
-    const dock = this.add.graphics().setDepth(2);
-    dock.lineStyle(1, 0xc5d4e8, 0.22);
-    dock.strokeCircle(HOME.x, HOME.y, 190);
-    dock.lineStyle(1, 0x9cb4cc, 0.12);
-    dock.strokeCircle(HOME.x, HOME.y, 208);
-    this.add.text(HOME.x + 177, HOME.y - 98, 'DOCKING RADIUS', {
-      fontFamily: 'monospace', fontSize: '10px', color: '#627a90',
-    }).setDepth(3);
+  /** Disable flight commands when a modal menu is open. Simulation continues. */
+  setControlsBlocked(blocked: boolean): void {
+    this.controlsBlocked = blocked;
+    if (blocked && this.beam) this.beam.clear();
   }
 
   private makeAsteroid(asteroid: Asteroid): Phaser.GameObjects.Container {
@@ -288,10 +316,12 @@ export class FlightScene extends Phaser.Scene {
 
   update(_time: number, delta: number): void {
     const dt = Math.min(delta / 1000, 0.05);
-    if (Phaser.Input.Keyboard.JustDown(this.keys.E)) this.launchOrDock();
-    if (Phaser.Input.Keyboard.JustDown(this.keys.Q)) this.nextShip();
-    this.moveManual(dt);
-    this.updateMining(dt);
+    if (!this.controlsBlocked) {
+      if (Phaser.Input.Keyboard.JustDown(this.keys.E)) this.launchOrDock();
+      if (Phaser.Input.Keyboard.JustDown(this.keys.Q)) this.nextShip();
+      this.moveManual(dt);
+      this.updateMining(dt);
+    }
     runAutomation(this.state, dt);
     this.refreshViews();
 
