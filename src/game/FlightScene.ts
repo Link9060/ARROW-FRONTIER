@@ -648,6 +648,8 @@ export class FlightScene extends Phaser.Scene {
       this.animateCameraTo(this.interiorFocus(),this.interiorZoom(),1150,()=>{
         this.setArtworkOpacity(0);
         this.setViewMode('interior');
+        // A miner's two reserved units are now one real physical cradle.
+        this.drawMothership();
         this.cameraTouched=false;
         this.refreshCameraZoom();
         this.onStateChange();
@@ -680,6 +682,7 @@ export class FlightScene extends Phaser.Scene {
       ship.y=port.departure.y;
       this.setArtworkOpacity(1);
       this.setViewMode('flight');
+      this.drawMothership();
       this.cameras.main.setZoom(this.flightZoom());
       this.cameraAnchor.setPosition(ship.x,ship.y);
       this.cameras.main.startFollow(this.cameraAnchor,true,.09,.09);
