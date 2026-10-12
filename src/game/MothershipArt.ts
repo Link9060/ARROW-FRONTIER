@@ -7,7 +7,7 @@ import { arrowOutline, FLAGSHIP_LENGTH } from '../sim/arrowGeometry';
 import { CELL_SIZE, CORE_DECK, deckCellPoint } from './deckLayout';
 import {
   HANGAR_SIDES, hangarFloor, SIDE_SIGN, PARKING_BAY, SIDE_PORT_X,
-  SIDE_BERTH_X, SIDE_SERVICE_X,
+  SIDE_SERVICE_X,
 } from '../sim/flagshipLayout';
 import type { HangarSide } from '../sim/flagshipLayout';
 
