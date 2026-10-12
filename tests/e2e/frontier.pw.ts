@@ -16,6 +16,19 @@ test('real desktop flight, departure, side docking and interior controls', async
   await expect(page.locator('body')).toHaveAttribute('data-frontier-view','flight',{timeout:30_000});
   await expect(page.locator('#dock-btn')).toBeVisible();
   await page.screenshot({path:'test-results/v06-desktop-flight.png'});
+  // The first ore field is physically in range of the newly launched scout.
+  // Verify resource extraction through player keyboard input, not just an
+  // isolated simulation function or a painted particle.
+  await page.keyboard.down('Space');
+  try {
+    await expect.poll(async ()=>{
+      const cargo=(await page.locator('#cargo').textContent())??'0 / 60';
+      return Number(cargo.split('/')[0].trim())>0;
+    },{timeout:12000}).toBe(true);
+    await page.screenshot({path:'test-results/v06-desktop-mining.png'});
+  } finally {
+    await page.keyboard.up('Space');
+  }
 
   // Start outside the enlarged mothership hull. Approach in manual flight.
   await page.keyboard.down('s');
