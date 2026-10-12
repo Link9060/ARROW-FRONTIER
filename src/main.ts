@@ -1,264 +1,298 @@
 import Phaser from 'phaser';
 import './style.css';
 import { FlightScene } from './game/FlightScene';
+import type { ViewMode } from './game/FlightScene';
 import { activeShip, roundCargo } from './sim/engine';
 import { cargoTotal, distance, DOCK_RADIUS, HOME, storedTotal } from './sim/model';
+import { dockedBerthCount, hangarCapacity } from './sim/hangar';
 import { powerReport } from './sim/mothership';
 import { loadGame, resetGame, saveGame } from './sim/persistence';
 import { BuilderUI } from './ui/BuilderUI';
-import type { ViewMode } from './game/FlightScene';
-import { dockedBerthCount, hangarCapacity } from './sim/hangar';
 
-const loaded = loadGame();
-const state = loaded.state;
+const loaded=loadGame();
+const state=loaded.state;
+const $=<T extends HTMLElement=HTMLElement>(id:string):T=>{
+  const value=document.getElementById(id);
+  if(!value)throw new Error('Missing ARROW element: '+id);
+  return value as T;
+};
+let started=false;
+let fleetOpen=false;
+let toastTimer:ReturnType<typeof setTimeout>|undefined;
+let lastView:ViewMode='interior';
 
-function byId<T extends HTMLElement = HTMLElement>(id: string): T {
-  const found = document.getElementById(id);
-  if (!found) throw new Error('Missing FRONTIER interface element: ' + id);
-  return found as T;
-}
-let toastTimer: ReturnType<typeof setTimeout> | undefined;
-function notice(message: string): void {
-  const toast = byId('toast');
-  toast.textContent = message;
+function notice(text:string):void{
+  const toast=$('toast');
+  toast.textContent=text;
   toast.classList.add('visible');
-  if (toastTimer) clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => toast.classList.remove('visible'), 3300);
+  if(toastTimer)clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>toast.classList.remove('visible'),2700);
 }
-function persist(showNotice = false): void {
-  const saved = saveGame(state);
-  if (showNotice) notice(saved ? 'EXPEDITION SAVED TO THIS BROWSER' : 'SAVE FAILED · CHECK BROWSER STORAGE');
-}
-
-let started = false;
-let commandOpen = false;
-
-// Build the whole UI before Phaser starts and invokes scene.create().
-const scene = new FlightScene(state, updatePanel, notice, () => persist(), (view: ViewMode) => {
-  document.body.dataset.frontierView = view;
-  const status = byId('cinematic-status');
-  if (view === 'transition') {
-    status.textContent = 'DOCKING / FLIGHT TRANSITION IN PROGRESS';
-    status.classList.add('visible');
-  } else {
-    status.classList.remove('visible');
-    status.textContent = '';
+function persist(feedback=false):void{
+  // Never write the in-between taxi position: the last saved checkpoint
+  // remains valid and playable if the page closes during a cinematic.
+  if(scene.viewMode==='transition'){
+    if(feedback)notice('Docking in progress. Saving after arrival.');
+    return;
   }
-  updatePanel();
+  const saved=saveGame(state);
+  if(feedback)notice(saved?'Progress saved':'Save unavailable in this browser');
+}
+
+const scene=new FlightScene(state,updateUI,notice,()=>persist(),(view:ViewMode)=>{
+  if(view==='transition'){
+    // Save the pre-animation position before cinematics move an undocked ship.
+    saveGame(state);
+    if(builder.isOpen)builder.close();
+    if(fleetOpen)setFleetOpen(false);
+  }
+  lastView=view;
+  document.body.dataset.frontierView=view;
+  if(view!=='flight')clearVirtualControls();
+  updateUI();
 });
-const builder = new BuilderUI(state, () => {
+
+const builder=new BuilderUI(state,()=>{
   scene.drawMothership();
-  updatePanel();
+  updateUI();
   persist();
-}, (opened) => {
-  if (opened) setCommandOpen(false);
-  setFlightInputLock();
-}, notice);
-
-function setFlightInputLock(): void {
-  scene.setControlsBlocked(!started || commandOpen || builder.isOpen);
+},(open:boolean)=>{
+  if(open)setFleetOpen(false);
+  document.body.dataset.uiPanel=open?'build':fleetOpen?'fleet':'none';
+  updateFlightLock();
+},notice);
+const virtualKeys=new Set<string>();
+let touchMine=false;
+function updateVirtualControls():void{
+  const x=(virtualKeys.has('right')?1:0)-(virtualKeys.has('left')?1:0);
+  const y=(virtualKeys.has('down')?1:0)-(virtualKeys.has('up')?1:0);
+  scene.setVirtualInput(x,y,touchMine);
 }
-function setCommandOpen(open: boolean): void {
-  if (!started && open) return;
-  if (open && builder.isOpen) builder.close();
-  commandOpen = open;
-  const layer = byId('command-overlay');
-  layer.classList.toggle('hidden', !open);
-  layer.setAttribute('aria-hidden', String(!open));
-  byId('command-btn').classList.toggle('is-active', open);
-  setFlightInputLock();
-  if (open) byId<HTMLButtonElement>('command-close').focus();
-  else byId<HTMLButtonElement>('command-btn').focus();
+function clearVirtualControls():void{
+  virtualKeys.clear();
+  touchMine=false;
+  document.querySelectorAll('.touch-pad button,.mine-button').forEach(element=>element.classList.remove('pressed'));
+  updateVirtualControls();
 }
-function updatePanel(): void {
-  const ship = activeShip(state);
-  const aboard = cargoTotal(ship.cargo);
-  const stored = storedTotal(state.stored);
-  const nearestHome = distance(ship, HOME);
-  const closeEnough = nearestHome <= DOCK_RADIUS;
-  const power = powerReport(state);
+function updateFlightLock():void{
+  scene.setControlsBlocked(!started||fleetOpen||builder.isOpen);
+}
+function setFleetOpen(value:boolean):void{
+  if(scene.viewMode==='transition'&&value)return;
+  if(value&&builder.isOpen)builder.close();
+  fleetOpen=value;
+  $('fleet-panel').classList.toggle('open',value);
+  $('fleet-panel').setAttribute('aria-hidden',String(!value));
+  $('fleet-toggle').setAttribute('aria-expanded',String(value));
+  document.body.dataset.uiPanel=value?'fleet':builder.isOpen?'build':'none';
+  updateFlightLock();
+  if(value)updateUI();
+}
+function requestLaunchOrDock():void{
+  if(!started||scene.viewMode==='transition')return;
+  if(builder.isOpen)builder.close();
+  if(fleetOpen)setFleetOpen(false);
+  clearVirtualControls();
+  scene.launchOrDock();
+}
 
-  // Flight panel contains ONLY information for the manually controlled vessel.
-  byId('ship-name').textContent = ship.name;
-  byId('ship-class').textContent = ship.role;
-  byId('ship-state').textContent = ship.docked ? 'DOCKED' : 'IN FLIGHT';
-  byId('ship-position').textContent = ship.docked
-    ? 'HANGAR / BAY ' + String((ship.berth ?? 0) + 1).padStart(2, '0')
-    : Math.round(nearestHome) + ' UNITS FROM HOME';
-  byId('hangar-active-ship').textContent = ship.name;
-  byId('hangar-active-berth').textContent = ship.docked
-    ? String((ship.berth ?? 0) + 1).padStart(2, '0') : 'IN FLIGHT';
-  byId('hangar-occupancy').textContent = dockedBerthCount(state) + ' / ' +
-    hangarCapacity(state) + ' SPACES';
-  byId('hangar-camera-zoom').textContent = Math.round(scene.getCameraStatus().zoom * 100) + '%';
-  byId('cargo').textContent = roundCargo(aboard) + ' / ' + ship.capacity;
-  byId('cargo-fill').style.width = Math.min(100, 100 * aboard / ship.capacity) + '%';
-  byId('ship-iron').textContent = roundCargo(ship.cargo.iron);
-  byId('ship-copper').textContent = roundCargo(ship.cargo.copper);
-  byId('pilot-tip').textContent = ship.docked
-    ? 'Ready for launch. Enter the interior with B to build or upgrade the mothership.'
-    : aboard >= ship.capacity - 0.001
-      ? 'Cargo full. Return to the mothership and unload before continuing.'
-      : closeEnough
-        ? 'Docking range reached. Press E to return to your hangar.'
-        : 'Scan the field. Hold click on an asteroid or press SPACE to mine the nearest deposit.';
+function updateUI():void{
+  const ship=activeShip(state);
+  const cargo=cargoTotal(ship.cargo);
+  const stored=storedTotal(state.stored);
+  const dist=distance(ship,HOME);
+  const power=powerReport(state);
+  const transitioning=scene.viewMode==='transition';
 
-  // Strategic data lives in Command Mode, not scattered across the flight HUD.
-  byId('storage').textContent = roundCargo(stored) + ' / ' + state.storageCapacity;
-  byId('storage-fill').style.width = Math.min(100, 100 * stored / state.storageCapacity) + '%';
-  byId('stored-iron').textContent = roundCargo(state.stored.iron);
-  byId('stored-copper').textContent = roundCargo(state.stored.copper);
-  byId('stored-alloy').textContent = roundCargo(state.stored.alloy);
-  byId('power-summary').textContent = power.load + ' / ' + power.output;
+  $('ship-name').textContent=ship.name;
+  $('ship-class').textContent=ship.role.includes('MINER')?'MINER':'SCOUT';
+  $('ship-state').textContent=transitioning?'AUTODOCK':ship.docked?'DOCKED':'PILOTING';
+  $('cargo').textContent=roundCargo(cargo)+' / '+ship.capacity;
+  $('cargo-fill').style.width=Math.min(100,100*cargo/ship.capacity)+'%';
+  $('ship-iron').textContent=roundCargo(ship.cargo.iron);
+  $('ship-copper').textContent=roundCargo(ship.cargo.copper);
+  $('pilot-tip').textContent=cargo>=ship.capacity-0.01?'Cargo full. Return to your mothership.':
+    dist<=DOCK_RADIUS?'Within docking range. Press E or Dock.':
+    'WASD to move · Space to mine · E to dock';
 
-  const launch = byId<HTMLButtonElement>('launch-btn');
-  launch.disabled = !ship.docked || scene.viewMode === 'transition';
-  launch.innerHTML = ship.docked ? 'LAUNCH SHIP <span>↗</span>' : 'SHIP DEPLOYED <span>◇</span>';
-  const dock = byId<HTMLButtonElement>('dock-btn');
-  dock.disabled = ship.docked || scene.viewMode === 'transition';
-  dock.classList.toggle('ready', !ship.docked && closeEnough);
-  byId<HTMLButtonElement>('hangar-launch-btn').disabled = !ship.docked || scene.viewMode === 'transition';
-  const interior = byId('builder-btn');
-  interior.classList.toggle('available', ship.docked);
-  interior.setAttribute('aria-disabled', String(!ship.docked));
-  interior.title = ship.docked ? 'Enter mothership interior (B)' : 'Dock your active ship to enter the interior';
+  $('hangar-occupancy').textContent=dockedBerthCount(state)+' / '+hangarCapacity(state)+' BAYS';
+  $('hangar-summary').textContent='Hangar · Bay '+String((ship.berth??0)+1).padStart(2,'0')+' · '+ship.name;
+  $('hangar-camera-zoom').textContent=Math.round(scene.getCameraStatus().zoom*100)+'%';
 
-  byId('mission-text').textContent = scene.viewMode === 'transition' ? 'HANGAR TRANSITION / AUTOPILOT ENGAGED'
-    : ship.docked ? 'MOTHERSHIP ONLINE  /  HANGAR DECK'
-    : aboard >= ship.capacity - 0.001 ? 'CARGO FULL  /  RETURN TO HOME'
-      : closeEnough ? 'DOCKING SIGNAL AVAILABLE' : 'LOCAL EXPEDITION  /  MINING ENABLED';
+  const launch=$<HTMLButtonElement>('launch-btn');
+  const dock=$<HTMLButtonElement>('dock-btn');
+  launch.disabled=!ship.docked||transitioning;
+  dock.disabled=ship.docked||transitioning;
+  $<HTMLButtonElement>('hangar-launch-btn').disabled=!ship.docked||transitioning;
+  $('build-toggle').setAttribute('aria-disabled',String(!ship.docked||transitioning));
+  $('action-eyebrow').textContent=dist<=DOCK_RADIUS?'MOTHERSHIP NEARBY':'IN FLIGHT';
+  $('mission-text').textContent=dist<=DOCK_RADIUS?'Ready to dock':'Explore · mine · return';
+  $('storage').textContent=roundCargo(stored)+' / '+state.storageCapacity;
+  $('storage-fill').style.width=Math.min(100,100*stored/state.storageCapacity)+'%';
+  $('stored-iron').textContent=roundCargo(state.stored.iron);
+  $('stored-copper').textContent=roundCargo(state.stored.copper);
+  $('stored-alloy').textContent=roundCargo(state.stored.alloy);
+  $('power-summary').textContent=power.load+' / '+power.output;
+  $('fleet-count').textContent=String(state.ships.length).padStart(2,'0');
 
-  const fleet = byId('fleet');
-  for (const member of state.ships) {
-    let button = fleet.querySelector<HTMLButtonElement>('[data-ship="' + member.id + '"]');
-    if (!button) {
-      button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'fleet-ship';
-      button.dataset.ship = member.id;
-      const identity = document.createElement('span');
-      identity.className = 'fleet-identity';
-      const name = document.createElement('strong');
-      name.className = 'fleet-name';
-      const role = document.createElement('small');
-      role.className = 'fleet-role';
-      identity.append(name, role);
-      const status = document.createElement('span');
-      status.className = 'fleet-state';
-      button.append(identity, status);
-      button.addEventListener('click', () => {
+  const list=$('fleet');
+  for(const member of state.ships){
+    let row=list.querySelector<HTMLButtonElement>('[data-ship-id="'+member.id+'"]');
+    if(!row){
+      row=document.createElement('button');
+      row.type='button';
+      row.className='fleet-ship';
+      row.dataset.shipId=member.id;
+      const identity=document.createElement('span');
+      identity.className='fleet-identity';
+      const name=document.createElement('strong');
+      name.className='fleet-name';
+      const role=document.createElement('small');
+      role.className='fleet-role';
+      identity.append(name,role);
+      const status=document.createElement('small');
+      status.className='fleet-state';
+      row.append(identity,status);
+      row.addEventListener('click',()=>{
+        if(scene.viewMode==='transition')return;
         scene.selectShip(member.id);
-        setCommandOpen(false);
-        updatePanel();
+        setFleetOpen(false);
+        updateUI();
       });
-      fleet.appendChild(button);
+      list.appendChild(row);
     }
-    button.classList.toggle('selected', member.id === state.activeShipId);
-    button.querySelector('.fleet-name')!.textContent = member.name;
-    button.querySelector('.fleet-role')!.textContent = member.role;
-    button.querySelector('.fleet-state')!.textContent = member.id === state.activeShipId
-      ? '● PILOTING' : member.mode === 'auto' ? '◉ AUTONOMOUS' : '○ IDLE / DOCKED';
+    row.classList.toggle('selected',member.id===state.activeShipId);
+    row.querySelector('.fleet-name')!.textContent=member.name;
+    row.querySelector('.fleet-role')!.textContent=member.role;
+    row.querySelector('.fleet-state')!.textContent=member.id===state.activeShipId?
+      'Piloting':member.mode==='auto'?'Automated':'Idle';
   }
   builder.tick();
 }
 
-// Phaser 3.90 intentionally removed GameConfig.resolution.
-// Instead render a device-density-sized canvas and let FIT display it in CSS
-// pixels. The scene camera zoom uses the same ratio to preserve world scale.
-const pixelRatio = Math.min(2, Math.max(1, window.devicePixelRatio || 1));
-const game = new Phaser.Game({
-  type: Phaser.AUTO,
-  parent: 'game',
-  backgroundColor: '#05080d',
-  scale: {
-    mode: Phaser.Scale.FIT,
-    width: Math.round(window.innerWidth * pixelRatio),
-    height: Math.round(window.innerHeight * pixelRatio),
-    autoCenter: Phaser.Scale.CENTER_BOTH,
+const ratio=Math.min(2,Math.max(1,window.devicePixelRatio||1));
+const game=new Phaser.Game({
+  type:Phaser.AUTO,
+  parent:'game',
+  backgroundColor:'#050506',
+  scale:{
+    mode:Phaser.Scale.FIT,
+    width:Math.round(window.innerWidth*ratio),
+    height:Math.round(window.innerHeight*ratio),
+    autoCenter:Phaser.Scale.CENTER_BOTH,
   },
-  render: { pixelArt: false, antialias: true, antialiasGL: true, roundPixels: false },
-  scene: [scene],
+  render:{pixelArt:false,antialias:true,antialiasGL:true,roundPixels:false},
+  scene:[scene],
 });
-window.addEventListener('resize', () => {
-  game.scale.setGameSize(Math.round(window.innerWidth * pixelRatio), Math.round(window.innerHeight * pixelRatio));
+window.addEventListener('resize',()=>{
+  game.scale.setGameSize(Math.round(window.innerWidth*ratio),Math.round(window.innerHeight*ratio));
   scene.refreshCameraZoom();
 });
-setFlightInputLock();
 
-byId('start-btn').addEventListener('click', () => {
-  byId('start-overlay').classList.add('hidden');
-  started = true;
-  setFlightInputLock();
-  notice(loaded.recovered
-    ? (loaded.migrated ? 'SAVE MIGRATED  /  ' : 'WELCOME BACK  /  ') +
-       Math.round(loaded.offlineSeconds / 60) + ' MINUTES OF OFFLINE PROGRESSION'
-    : 'WELCOME TO FRONTIER  /  FIRST EXPEDITION READY');
+$('start-btn').addEventListener('click',()=>{
+  started=true;
+  $('start-overlay').classList.add('hidden');
+  updateFlightLock();
+  notice(loaded.recovered?(loaded.migrated?'Previous save migrated':'Welcome back'):'Welcome to Frontier');
 });
-function requestLaunchOrDock(): void {
-  if (!started || scene.viewMode === 'transition') return;
-  if (builder.isOpen) builder.close();
-  if (commandOpen) setCommandOpen(false);
-  scene.launchOrDock();
-}
-byId('launch-btn').addEventListener('click', () => {
-  if (activeShip(state).docked) requestLaunchOrDock();
+$('fleet-toggle').addEventListener('click',()=>setFleetOpen(!fleetOpen));
+$('fleet-close').addEventListener('click',()=>setFleetOpen(false));
+$('build-toggle').addEventListener('click',()=>{
+  if(fleetOpen)setFleetOpen(false);
+  builder.toggle();
 });
-byId('dock-btn').addEventListener('click', () => {
-  if (!activeShip(state).docked) requestLaunchOrDock();
+$('builder-close').addEventListener('click',()=>builder.close());
+$('hangar-build-btn').addEventListener('click',()=>builder.open());
+$('fleet-build').addEventListener('click',()=>{
+  setFleetOpen(false);
+  builder.open();
 });
-byId('hangar-launch-btn').addEventListener('click', () => requestLaunchOrDock());
-byId('hangar-build-btn').addEventListener('click', () => builder.open());
-byId('zoom-in-btn').addEventListener('click', () => scene.zoomInterior(1));
-byId('zoom-out-btn').addEventListener('click', () => scene.zoomInterior(-1));
-byId('recenter-btn').addEventListener('click', () => scene.recenterInterior());
-byId('command-btn').addEventListener('click', () => setCommandOpen(!commandOpen));
-byId('quick-command-btn').addEventListener('click', () => setCommandOpen(true));
-byId('command-close').addEventListener('click', () => setCommandOpen(false));
-byId('command-overlay').addEventListener('pointerdown', (event) => {
-  if (event.target === byId('command-overlay')) setCommandOpen(false);
+$('save-toggle').addEventListener('click',()=>persist(true));
+$('launch-btn').addEventListener('click',requestLaunchOrDock);
+$('dock-btn').addEventListener('click',requestLaunchOrDock);
+$('hangar-launch-btn').addEventListener('click',requestLaunchOrDock);
+$('zoom-in-btn').addEventListener('click',()=>scene.zoomInterior(1));
+$('zoom-out-btn').addEventListener('click',()=>scene.zoomInterior(-1));
+$('recenter-btn').addEventListener('click',()=>scene.recenterInterior());
+$('fleet-resume').addEventListener('click',()=>{
+  let resumed=0;
+  for(const member of state.ships){
+    if(member.id===state.activeShipId||member.mode!=='hold')continue;
+    member.mode='auto';
+    resumed++;
+  }
+  updateUI();
+  persist();
+  notice(resumed?resumed+' idle ship(s) resumed':'No idle ships');
 });
-window.addEventListener('keydown', (event) => {
-  if (!started || event.repeat) return;
-  if (event.key === 'Escape' && commandOpen) {
-    setCommandOpen(false);
+
+window.addEventListener('keydown',event=>{
+  if(!started||event.repeat)return;
+  if(event.key==='Escape'){
+    if(builder.isOpen)builder.close();
+    else if(fleetOpen)setFleetOpen(false);
     event.preventDefault();
-  } else if (event.key.toLowerCase() === 'c' &&
-      !(event.target instanceof HTMLInputElement) &&
-      !(event.target instanceof HTMLTextAreaElement)) {
-    setCommandOpen(!commandOpen);
+    return;
+  }
+  if(event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement ||
+      event.target instanceof HTMLSelectElement)return;
+  const key=event.key.toLowerCase();
+  if(key==='c'){setFleetOpen(!fleetOpen);event.preventDefault();}
+  else if(key==='b'){
+    if(fleetOpen)setFleetOpen(false);
+    builder.toggle();
     event.preventDefault();
-  } else if ((event.code === 'KeyE' || event.key.toLowerCase() === 'e') &&
-      !commandOpen && !builder.isOpen) {
+  }
+  else if(key==='e'&&!builder.isOpen&&!fleetOpen){
     requestLaunchOrDock();
     event.preventDefault();
-  } else if ((event.code === 'KeyQ' || event.key.toLowerCase() === 'q') &&
-      !commandOpen && !builder.isOpen && scene.viewMode !== 'transition') {
+  }
+  else if(key==='q'&&!builder.isOpen&&!fleetOpen&&scene.viewMode!=='transition'){
     scene.nextShip();
     event.preventDefault();
   }
 });
 
-byId('save-btn').addEventListener('click', () => persist(true));
-byId('fleet-resume').addEventListener('click', () => {
-  let count = 0;
-  for (const member of state.ships) {
-    if (member.id === state.activeShipId || member.mode !== 'hold') continue;
-    member.mode = 'auto';
-    count++;
-  }
-  notice(count ? count + ' SHIPS RESUMED BY LOCAL RAVIN CONTROLLER' : 'NO IDLE SHIPS TO RESUME');
-  updatePanel();
-  persist();
+for(const button of document.querySelectorAll<HTMLButtonElement>('[data-move]')){
+  const direction=button.dataset.move!;
+  const start=(event:PointerEvent):void=>{
+    event.preventDefault();
+    virtualKeys.add(direction);
+    button.classList.add('pressed');
+    button.setPointerCapture(event.pointerId);
+    updateVirtualControls();
+  };
+  const end=(event:PointerEvent):void=>{
+    event.preventDefault();
+    virtualKeys.delete(direction);
+    button.classList.remove('pressed');
+    updateVirtualControls();
+  };
+  button.addEventListener('pointerdown',start);
+  button.addEventListener('pointerup',end);
+  button.addEventListener('pointercancel',end);
+  button.addEventListener('lostpointercapture',()=>{virtualKeys.delete(direction);updateVirtualControls();});
+}
+const mine=$<HTMLButtonElement>('touch-mine');
+mine.addEventListener('pointerdown',event=>{
+  event.preventDefault();
+  touchMine=true;
+  mine.classList.add('pressed');
+  mine.setPointerCapture(event.pointerId);
+  updateVirtualControls();
 });
-byId('reset-btn').addEventListener('click', () => {
-  if (window.confirm('Erase your local FRONTIER save and restart your expedition?')) {
-    resetGame();
-    window.location.reload();
-  }
+const stopMine=():void=>{touchMine=false;mine.classList.remove('pressed');updateVirtualControls();};
+mine.addEventListener('pointerup',stopMine);
+mine.addEventListener('pointercancel',stopMine);
+mine.addEventListener('lostpointercapture',stopMine);
+
+// An interrupted docking cinematic must not corrupt the stable world state.
+window.addEventListener('pagehide',()=>persist());
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden)persist();
 });
-window.addEventListener('pagehide', () => persist());
-document.addEventListener('visibilitychange', () => {
-  if (document.hidden) persist();
-});
-updatePanel();
+document.body.dataset.frontierView=lastView;
+document.body.dataset.uiPanel='none';
+updateFlightLock();
+updateUI();
 void game;
