@@ -697,13 +697,18 @@ export class FlightScene extends Phaser.Scene {
   }
 
   update(_time:number,delta:number):void {
-    const manualStep=Math.min(.05,Math.max(0,delta/1000));
+    // Rendering at 8 FPS must not reduce real piloting speed to one-quarter.
+    // Consume measured elapsed time in 50 ms substeps, while capping the
+    // longest foreground stall to avoid tunneling into the hull.
+    const manualSeconds=Math.min(.25,Math.max(0,delta/1000));
     this.updateTouchNavigation();
-    if(!this.controlsBlocked && this.mode!=='transition'){
-      // E and Q are handled centrally in main.ts, including when UI buttons have focus.
-      if(this.mode==='flight'){
-        this.stepManual(manualStep);
-        this.stepMining(manualStep);
+    if(!this.controlsBlocked && this.mode==='flight'){
+      let remaining=manualSeconds;
+      while(remaining>.000001){
+        const step=Math.min(.05,remaining);
+        this.stepManual(step);
+        this.stepMining(step);
+        remaining-=step;
       }
     }
     // Cinematics pause the autonomous fleet for a few seconds to reserve a
