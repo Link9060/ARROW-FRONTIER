@@ -162,7 +162,8 @@ export class FlightScene extends Phaser.Scene {
     this.art?.doors.destroy(true);
     this.art = buildMothershipArtwork(this,this.state,HOME.x,HOME.y);
     this.berthFingerprint=this.state.ships
-      .filter(ship=>ship.docked).map(ship=>ship.id+':'+ship.berth).join('|');
+      .filter(ship=>ship.docked||ship.navigation)
+      .map(ship=>ship.id+':'+ship.berth+':'+(ship.navigation?.kind??'parked')).join('|');
     this.setArtworkOpacity(roofAlpha);
     if (!this.dockRing) {
       this.dockRing = this.add.graphics().setDepth(3);
@@ -705,6 +706,11 @@ export class FlightScene extends Phaser.Scene {
 
   selectShip(id:string):void {
     if(this.mode==='transition')return;
+    const next=this.state.ships.find(ship=>ship.id===id);
+    if(next?.navigation){
+      this.announce('WAIT FOR AUTOPILOT TO CLEAR THE HANGAR');
+      return;
+    }
     if(!switchShip(this.state,id))return;
     const ship=activeShip(this.state);
     if(ship.docked){
