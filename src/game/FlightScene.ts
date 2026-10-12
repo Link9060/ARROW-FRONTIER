@@ -592,7 +592,7 @@ export class FlightScene extends Phaser.Scene {
         return;
       }
       // The destination exactly matches berthWorldPosition(). No position jump.
-      ship.angle=0;
+      ship.angle=-Math.PI/2;
       this.animateCameraTo(this.interiorFocus(),this.interiorZoom(),1150,()=>{
         this.setArtworkOpacity(0);
         this.setViewMode('interior');
