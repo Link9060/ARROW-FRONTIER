@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { HOME, ROOM_GRID } from '../sim/model';
 import type { GameState, Room } from '../sim/model';
-import { berthLocalPosition, hangarCapacity, dockingPort } from '../sim/hangar';
+import { berthLocalPosition, hangarCapacity, dockingPort, shipBerthSpan } from '../sim/hangar';
 import { MODULES, powerReport } from '../sim/mothership';
 import { arrowOutline, FLAGSHIP_LENGTH } from '../sim/arrowGeometry';
 import { CELL_SIZE, CORE_DECK, deckCellPoint } from './deckLayout';
@@ -158,21 +158,33 @@ export function buildMothershipArtwork(scene:Phaser.Scene,state:GameState,
       g.lineStyle(1,0xbdbdc3,.26);
       g.lineBetween(aisleX-4,y,aisleX+4,y+sign*5);
     }
+    const consumed=new Set<number>();
     for(let berth=0;berth<capacity;berth++){
+      if(consumed.has(berth))continue;
       const p=berthLocalPosition(berth);
       if(Math.sign(p.y)!==sign)continue;
-      const w=PARKING_BAY.width,h=PARKING_BAY.height;
+      // Wide ships OWN a physically combined double berth. Draw one merged
+      // parking cradle whose center is EXACTLY berthWorldPosition(ship).
+      const wide=state.ships.some(ship=>ship.docked &&
+        ship.berth===berth && shipBerthSpan(ship)===2);
+      const paired=wide&&berth+1<capacity&&berth%2===0;
+      if(paired)consumed.add(berth+1);
+      const cx=paired?berthLocalPosition(berth,2).x:p.x;
+      const w=PARKING_BAY.width+(paired?95:0),h=PARKING_BAY.height;
       g.fillStyle(0x161619,1);
       g.lineStyle(1.3,0x898991,.78);
-      g.fillRoundedRect(p.x-w/2,p.y-h/2,w,h,5);
-      g.strokeRoundedRect(p.x-w/2,p.y-h/2,w,h,5);
+      g.fillRoundedRect(cx-w/2,p.y-h/2,w,h,5);
+      g.strokeRoundedRect(cx-w/2,p.y-h/2,w,h,5);
       g.lineStyle(2,0xc7c7cf,.45);
-      for(const xx of [p.x-w/2+8,p.x+w/2-8]){
+      for(const xx of [cx-w/2+8,cx+w/2-8]){
         g.lineBetween(xx,p.y-h/2+9,xx,p.y+h/2-9);
-        g.fillStyle(0xc7c7cf,.5);g.fillCircle(xx,p.y+sign*(h/2-9),2);
+        g.fillStyle(0xc7c7cf,.5);
+        g.fillCircle(xx,p.y+sign*(h/2-9),2);
       }
-      label(scene,interior,p.x,p.y-sign*19,
-        String(berth+1).padStart(2,'0'),8,'#888890');
+      const title=paired
+        ?String(berth+1).padStart(2,'0')+' / '+String(berth+2).padStart(2,'0')
+        :String(berth+1).padStart(2,'0');
+      label(scene,interior,cx,p.y-sign*19,title,8,'#888890');
     }
     // Narrow entrance follows the actual side of the ship.
     const port=dockingPort(state,side);
