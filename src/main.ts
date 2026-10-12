@@ -207,7 +207,8 @@ $('start-btn').addEventListener('click',()=>{
   started=true;
   $('start-overlay').classList.add('hidden');
   updateFlightLock();
-  notice(loaded.recovered?(loaded.migrated?'Previous save migrated':'Welcome back'):'Welcome to Frontier');
+  // Entering the game should reveal the ship, not overlay it with a popup.
+  if(loaded.migrated)notice('Previous save migrated safely');
 });
 $('fleet-toggle').addEventListener('click',()=>setFleetOpen(!fleetOpen));
 $('fleet-close').addEventListener('click',()=>setFleetOpen(false));

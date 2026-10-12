@@ -4,7 +4,7 @@ import { dockShip, launchShip, activeShip, switchShip } from '../src/sim/engine'
 import {
   MOTHERSHIP, berthWorldPosition, dockedBerthCount,
   findAvailableBerth, hangarCapacity, reconcileBerths,
-  shipBerthSpan,
+  shipBerthSpan, berthLocalPosition,
 } from '../src/sim/hangar';
 import { buildRoom, upgradeRoom } from '../src/sim/mothership';
 import { loadGame, saveGame } from '../src/sim/persistence';
@@ -16,11 +16,11 @@ describe('physical hangar parking rules', () => {
     expect(activeShip(game).berth).toBe(0);
     const miner = game.ships[1];
     expect(shipBerthSpan(miner)).toBe(2);
-    expect(findAvailableBerth(game, miner)).toBe(1);
+    expect(findAvailableBerth(game, miner)).toBe(2);
     miner.x = HOME.x + 30;
     miner.y = HOME.y - 600;
     expect(dockShip(game, miner)).toBe('docked');
-    expect(miner.berth).toBe(1);
+    expect(miner.berth).toBe(2);
     expect(dockedBerthCount(game)).toBe(3);
     expect(activeShip(game).berth).not.toBe(miner.berth);
     expect(miner.x).toBeCloseTo(berthWorldPosition(miner).x);
@@ -41,12 +41,28 @@ describe('physical hangar parking rules', () => {
     spare.y = HOME.y - 600;
     game.ships.push(spare);
     expect(dockShip(game, spare)).toBe('docked');
-    expect(spare.berth).toBe(3);
+    expect(spare.berth).toBe(1);
     const blocked = { ...spare, id: 'blocked', docked: false, berth: undefined };
     game.ships.push(blocked);
     expect(dockShip(game, blocked)).toBe('hangar-full');
     expect(blocked.docked).toBe(false);
     expect(dockedBerthCount(game)).toBe(4);
+  });
+
+
+  it('keeps a clear physical traffic aisle in all three hangar rows', () => {
+    const game=makeNewGame(1000);
+    game.stored.iron=300;game.stored.copper=200;game.stored.alloy=30;
+    expect(buildRoom(game,'hangar',4,2)).toBeNull();
+    const capacity=hangarCapacity(game);
+    expect(capacity).toBe(8);
+    for(let i=0;i<capacity;i++){
+      const berth=berthLocalPosition(i);
+      expect(Math.abs(berth.x)).toBeGreaterThan(96);
+      expect(berth.y).toBe(-119-Math.floor(i/4)*138);
+    }
+    const miner=game.ships[1];
+    expect(findAvailableBerth(game,miner)).toBe(2);
   });
 
   it('allows expansion and upgrades to create more parking units', () => {

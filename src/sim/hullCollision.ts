@@ -31,7 +31,7 @@ export function hitsMothership(world:Point,state:Pick<GameState,'rooms'>,padding
   // The official mark's actual concave tail shape determines most collisions.
   if(insidePolygon(local,FLAGSHIP_OUTLINE))return true;
   const rows=Math.max(1,Math.ceil(hangarCapacity(state)/4));
-  const floorTop=-183-(rows-1)*112;
+  const floorTop=-183-(rows-1)*138;
   const port=dockingPort(state);
   const doorY=port.entrance.y-HOME.y;
   const pad=Math.max(0,padding);
@@ -39,7 +39,7 @@ export function hitsMothership(world:Point,state:Pick<GameState,'rooms'>,padding
   if(insideRect(local,-294-pad,floorTop-22-pad,588+pad*2,
     (-45)-(floorTop-22)+pad*2))return true;
   // Narrow bridge between side airlock and the existing hangar shell.
-  if(insideRect(local,-183-pad,doorY-22-pad,136+pad*2,
+  if(insideRect(local,-68-pad,doorY-22-pad,136+pad*2,
     floorTop-(doorY-22)+pad*2))return true;
   return false;
 }

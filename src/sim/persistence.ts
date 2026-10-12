@@ -1,5 +1,6 @@
 import { HOME, makeNewGame, ROOM_GRID, starterRooms, WORLD } from './model';
-import { MOTHERSHIP, reconcileBerths } from './hangar';
+import { MOTHERSHIP, dockingPort, reconcileBerths } from './hangar';
+import { hitsMothership } from './hullCollision';
 import type { Cargo, GameState, Resources, Room, RoomType, Ship } from './model';
 import { simulateOffline } from './engine';
 import { capacityFor } from './mothership';
@@ -146,10 +147,12 @@ export function recoverInterruptedDocking(state:GameState):boolean {
   for(let index=0;index<state.ships.length;index++){
     const ship=state.ships[index];
     if(ship.docked)continue;
-    const rx=ship.x-HOME.x,ry=ship.y-HOME.y;
-    if(Math.abs(rx)<555 && Math.abs(ry)<350){
-      ship.x=MOTHERSHIP.departure.x+index*82;
-      ship.y=MOTHERSHIP.departure.y-30;
+    if(hitsMothership(ship,state)){
+      // This may be a twelve-bay save. Use the actual expanded airlock's
+      // external clearance point instead of a fixed starter-hangar offset.
+      const port=dockingPort(state);
+      ship.x=Math.min(WORLD.width-50,port.departure.x+index*82);
+      ship.y=Math.max(50,port.departure.y-30);
       changed=true;
     }
   }

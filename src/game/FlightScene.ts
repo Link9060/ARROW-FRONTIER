@@ -13,6 +13,7 @@ import type { MothershipArtwork } from './MothershipArt';
 import { locateDeckCell } from './deckLayout';
 import { resolveHullMovement } from '../sim/hullCollision';
 import { MiningEffects } from './MiningEffects';
+import { MothershipAtmosphere } from './MothershipAtmosphere';
 import type { Asteroid, GameState, Point, Ship } from '../sim/model';
 
 export type ViewMode = 'flight' | 'interior' | 'transition';
@@ -25,9 +26,11 @@ export class FlightScene extends Phaser.Scene {
   private art?: MothershipArtwork;
   private dockRing?: Phaser.GameObjects.Graphics;
   private miningEffects!: MiningEffects;
+  private atmosphere!: MothershipAtmosphere;
   private rangeIndicator!: Phaser.GameObjects.Graphics;
   private tractorBeam!: Phaser.GameObjects.Graphics;
   private tractorPhase = 0;
+  private enginePhase = 0;
   private controlsBlocked = true;
   private virtualMove = {x:0,y:0};
   private virtualMining = false;
@@ -76,6 +79,7 @@ export class FlightScene extends Phaser.Scene {
     }
 
     this.miningEffects = new MiningEffects(this);
+    this.atmosphere = new MothershipAtmosphere(this);
     this.tractorBeam = this.add.graphics().setDepth(28);
     this.rangeIndicator = this.add.graphics().setDepth(4);
     this.keys = this.input.keyboard!.addKeys(
@@ -119,8 +123,8 @@ export class FlightScene extends Phaser.Scene {
     this.onViewChange(this.mode);
     this.refreshViews();
     this.onStateChange();
-    this.announce(ship.docked ? 'HANGAR READY · CHOOSE LAUNCH OR EXPLORE THE INTERIOR' :
-      'SHIP CONTROL ONLINE · RETURN TO THE MOTHERSHIP TO DOCK');
+    // The first view belongs to the ship, not to a persistent onboarding
+    // banner. Contextual controls already explain launch and docking.
   }
 
   private setAirlock(open:boolean,animate=true):void {
@@ -178,17 +182,35 @@ export class FlightScene extends Phaser.Scene {
       right:panelOpen ? Math.min(365,window.innerWidth*.32) : 0,
     };
   }
+  private interiorVerticalBounds(): {top:number;bottom:number} {
+    const port=dockingPort(this.state);
+    // One to three hangar rows changes the real vertical dimensions.
+    // Fit the EXTENDED AIRLOCK too, not just the original arrow hull.
+    return {
+      top:Math.min(-470,port.tractor.y-HOME.y-60),
+      bottom:475,
+    };
+  }
   private interiorZoom(): number {
     const margins=this.interiorMargins();
-    const availableWidth=Math.max(240,window.innerWidth-margins.left-margins.right-55);
-    const availableHeight=Math.max(280,window.innerHeight-155);
-    return Math.max(.24,Math.min(1.12,availableWidth/1220,availableHeight/850))*this.deviceScale();
+    const availableWidth=Math.max(260,window.innerWidth-margins.left-margins.right-55);
+    // Keep the nav and controls clear without wasting nearly a quarter of
+    // the viewport on empty safety margins.
+    const availableHeight=Math.max(290,window.innerHeight-132);
+    const bounds=this.interiorVerticalBounds();
+    const shipHeight=bounds.bottom-bounds.top;
+    return Math.max(.23,Math.min(1.04,
+      availableWidth/1290,availableHeight/shipHeight))*this.deviceScale();
   }
   private interiorFocus(): Point {
     const margins=this.interiorMargins();
     const offset=(margins.left-margins.right)/2;
     const cssZoom=this.interiorZoom()/this.deviceScale();
-    return {x:HOME.x-offset/Math.max(.24,cssZoom),y:HOME.y};
+    const bounds=this.interiorVerticalBounds();
+    return {
+      x:HOME.x-offset/Math.max(.23,cssZoom),
+      y:HOME.y+(bounds.top+bounds.bottom)/2,
+    };
   }
   getCameraStatus(): { zoom: number; worldX: number; worldY: number } {
     const camera=this.cameras?.main;
@@ -338,6 +360,12 @@ export class FlightScene extends Phaser.Scene {
       g.fillCircle(-size.length*.13,size.length*.21,3);
     }
     view.add(g);
+    // Small aft nozzles are world objects, not HUD effects. Their subtle
+    // exhaust scales with actual movement and fades while parked.
+    const exhaust=this.add.graphics();
+    view.addAt(exhaust,0);
+    view.setData('exhaust',exhaust);
+    view.setData('hullLength',size.length);
     const label = this.add.text(ship.x,ship.y-51,ship.name,{
       fontFamily:'Inter, sans-serif',fontSize:'12px',color:'#d8d8da',
     }).setOrigin(.5).setDepth(20);
@@ -354,13 +382,34 @@ export class FlightScene extends Phaser.Scene {
       view.setVisible(visible);
       view.setPosition(ship.x,ship.y);
       view.setRotation(ship.angle);
+      const exhaust=view.getData('exhaust') as Phaser.GameObjects.Graphics;
+      const hullLength=view.getData('hullLength') as number;
+      exhaust.clear();
+      const speed=this.velocity.get(ship.id);
+      const moving=speed ? Math.hypot(speed.x,speed.y)/ship.speed : 0;
+      const thrust=ship.docked ? 0 :
+        this.mode==='transition' ? .72 :
+        ship.mode==='auto' ? .46 : Math.min(.85,moving);
+      if(thrust>.08){
+        const shimmer=Math.sin(this.enginePhase*11+ship.x*.04)*1.6;
+        const start=-hullLength*.31;
+        const end=start-hullLength*(.15+.18*thrust)-shimmer;
+        exhaust.lineStyle(5,0xf1f1f2,thrust*.11);
+        exhaust.lineBetween(start,0,end,0);
+        exhaust.lineStyle(1.4,0xfafafa,thrust*.68);
+        exhaust.lineBetween(start,0,end+3,0);
+        exhaust.fillStyle(0xffffff,.5*thrust);
+        exhaust.fillCircle(start,0,1.8);
+      }
       const label=view.getData('label') as Phaser.GameObjects.Text;
       label.setPosition(ship.x,ship.y-43);
       // Flight already has an active-ship HUD. Hide duplicate active labels
       // and nearby nonactive names that obscure asteroids and other vessels.
       const active=activeShip(this.state);
-      label.setVisible(visible && (this.mode==='interior' ||
-        (ship.id!==active.id && distance(ship,active)>105)));
+      // The physical bay number + active-ship HUD already identify docked
+      // vessels. Floating text above each sprite was fighting with the deck.
+      label.setVisible(visible && this.mode==='flight' &&
+        ship.id!==active.id && distance(ship,active)>145);
       label.setColor(ship.id===this.state.activeShipId?'#eeeeee':'#99999c');
     }
     for(const asteroid of this.state.asteroids){
@@ -507,12 +556,15 @@ export class FlightScene extends Phaser.Scene {
         Math.atan2(destination.point.y-start.y,destination.point.x-start.x);
       const heading=shortestAngle(start.heading,targetHeading);
       const duration=segmentDuration(start,destination.point,destination.speed);
-      const targetZoom=this.flightZoom()*(
-        destination.stage==='align'?.89:
-        destination.stage==='approach'?1.04:
-        destination.stage==='tractor'?1.16:
-        destination.stage==='entry'?1.23:1.12
-      );
+      // A controlled close-up, not a sudden 140%-zoom explosion. Keep the
+      // vessel and immediate docking hardware in the same composition.
+      const targetZoom=Math.min(this.flightZoom()*1.02,
+        this.deviceScale()*(
+          destination.stage==='align'?.82:
+          destination.stage==='approach'?.93:
+          destination.stage==='tractor'?1.02:
+          destination.stage==='entry'?.96:.88
+        ));
       this.tweens.addCounter({
         from:0,to:1,duration,
         ease:destination.stage==='taxi'?'Sine.InOut':'Linear',
@@ -573,6 +625,10 @@ export class FlightScene extends Phaser.Scene {
     this.cameras.main.stopFollow();
     this.setViewMode('transition');
     this.announce('AUTOPILOT · ALIGNING WITH SIDE HANGAR');
+    // Ease away from the freely-piloted flight camera before acquiring the
+    // automatic docking route so player control never visually snaps.
+    this.animateCameraTo({x:ship.x,y:ship.y},
+      Math.min(this.flightZoom(),.94*this.deviceScale()),520,()=>{
     this.flyRoute(ship,waypoints,false,()=>{
       const result=dockShip(this.state,ship);
       if(result!=='docked'){
@@ -583,7 +639,7 @@ export class FlightScene extends Phaser.Scene {
         return;
       }
       // The destination exactly matches berthWorldPosition(). No position jump.
-      ship.angle=0;
+      ship.angle=-Math.PI/2;
       this.animateCameraTo(this.interiorFocus(),this.interiorZoom(),1150,()=>{
         this.setArtworkOpacity(0);
         this.setViewMode('interior');
@@ -593,6 +649,7 @@ export class FlightScene extends Phaser.Scene {
         this.saving();
         this.announce('PARKED · BAY '+String((ship.berth??0)+1).padStart(2,'0'));
       });
+    });
     });
   }
 
@@ -605,6 +662,10 @@ export class FlightScene extends Phaser.Scene {
     this.setViewMode('transition');
     this.announce('UNDOCKING · RELEASE CLAMPS');
     const port=dockingPort(this.state);
+    // Begin with the wide ship overview, then smoothly dolly INTO the berth
+    // before the vessel moves. The old version jumped straight to a closeup.
+    this.animateCameraTo({x:ship.x,y:ship.y},
+      Math.min(this.flightZoom(),.93*this.deviceScale()),1050,()=>{
     this.flyRoute(ship,departureRoute(ship,port),true,()=>{
       launchShip(ship);
       // Align the launch result with the actual expanded airlock, not the
@@ -619,6 +680,7 @@ export class FlightScene extends Phaser.Scene {
       this.onStateChange();
       this.saving();
       this.announce('CLEAR OF MOTHERSHIP · MANUAL CONTROL');
+    });
     });
   }
 
@@ -738,8 +800,10 @@ export class FlightScene extends Phaser.Scene {
       const ship=activeShip(this.state);
       this.cameraAnchor.setPosition(ship.x,ship.y);
     }
+    this.enginePhase+=Math.min(.08,Math.max(0,delta/1000));
     this.refreshViews();
     this.miningEffects.update(delta/1000);
+    this.atmosphere.update(delta/1000,this.state,this.art?.roof.alpha ?? 1);
     this.timeToUpdateUI+=delta/1000;
     this.timeToSave+=elapsed;
     if(this.timeToUpdateUI>=.15){

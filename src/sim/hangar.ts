@@ -11,7 +11,7 @@ export const MOTHERSHIP = {
   halfHeight: 442,
   /** The upper SIDE hangar is physically mounted to the broad shoulder. */
   entrance: { x: HOME.x + SHIP_ZONES.airlock.x, y: HOME.y + SHIP_ZONES.airlock.y },
-  approach: { x: HOME.x + SHIP_ZONES.airlock.x, y: HOME.y - 555 },
+  approach: { x: HOME.x + SHIP_ZONES.airlock.x, y: HOME.y - 502 },
   departure: { x: HOME.x + SHIP_ZONES.airlock.x, y: HOME.y - 830 },
   hangar: { x: -283, y: -187, width: 567, height: 375 },
 } as const;
@@ -41,7 +41,7 @@ export interface DockingPort {
  */
 export function dockingPort(state:Pick<GameState,'rooms'>):DockingPort {
   const extraRows=Math.max(0,Math.ceil(hangarCapacity(state)/BERTH_COLUMNS)-1);
-  const shift=-112*extraRows;
+  const shift=-138*extraRows;
   const move=(point:Point):Point=>({x:point.x,y:point.y+shift});
   return {
     entrance:move(MOTHERSHIP.entrance),
@@ -56,8 +56,10 @@ export function berthRange(index: number, span: number): number[] {
 }
 
 function fitsAt(index: number, span: number, max: number): boolean {
-  return Number.isInteger(index) && span > 0 && index >= 0 &&
-    index + span <= max && index % BERTH_COLUMNS + span <= BERTH_COLUMNS;
+  return Number.isInteger(index) && span > 0 && span <= 2 && index >= 0 &&
+    index + span <= max && index % BERTH_COLUMNS + span <= BERTH_COLUMNS &&
+    // A two-unit craft cannot straddle the center taxi lane.
+    (span === 1 || index % BERTH_COLUMNS === 0 || index % BERTH_COLUMNS === 2);
 }
 
 export function findAvailableBerth(state: GameState, ship: Ship): number | null {
@@ -81,7 +83,9 @@ export function findAvailableBerth(state: GameState, ship: Ship): number | null 
 export function berthLocalPosition(index: number, span = 1): Point {
   const row = Math.floor(index / BERTH_COLUMNS);
   const col = index % BERTH_COLUMNS;
-  return { x: -225 + (col + (span - 1) / 2) * 145, y: -118 - row * 112 };
+  const columnCenters=[-212,-109,109,212];
+  const x=span===1?columnCenters[col]:(columnCenters[col]+columnCenters[col+1])/2;
+  return { x, y: -119 - row * 138 };
 }
 
 export function berthWorldPosition(ship: Ship): Point {
@@ -116,6 +120,7 @@ export function reconcileBerths(state: GameState): void {
     const position = berthWorldPosition(ship);
     ship.x = position.x;
     ship.y = position.y;
+    ship.angle = -Math.PI / 2;
   }
 }
 

@@ -39,9 +39,12 @@ export function dockingRoute(from:Point, berth:Point,port:Pick<typeof MOTHERSHIP
     {point:port.approach,stage:'approach',speed:350},
     {point:{x:port.entrance.x,y:port.entrance.y-100},stage:'tractor',speed:230},
     {point:port.entrance,stage:'entry',speed:150},
-    {point:{x:port.entrance.x,y:HOME.y-246},stage:'taxi',speed:145},
-    {point:{x:berth.x,y:HOME.y-180},stage:'taxi',speed:125},
-    {point:berth,stage:'taxi',speed:95,heading:0},
+    // After entry, stay in the unobstructed central aisle until reaching the
+    // requested row. Turn into the parking bank through that row's service lane.
+    {point:{x:port.entrance.x,y:port.entrance.y+84},stage:'taxi',speed:150},
+    {point:{x:port.entrance.x,y:berth.y+62},stage:'taxi',speed:140},
+    {point:{x:berth.x,y:berth.y+62},stage:'taxi',speed:120},
+    {point:berth,stage:'taxi',speed:90,heading:-Math.PI/2},
   );
   return route;
 }
@@ -52,8 +55,9 @@ export function dockingRoute(from:Point, berth:Point,port:Pick<typeof MOTHERSHIP
  */
 export function departureRoute(from:Point,port:Pick<typeof MOTHERSHIP,'entrance'|'approach'|'departure'>=MOTHERSHIP):DockWaypoint[] {
   return [
-    {point:{x:from.x,y:HOME.y-180},stage:'taxi',speed:110},
-    {point:{x:port.entrance.x,y:HOME.y-246},stage:'taxi',speed:135},
+    {point:{x:from.x,y:from.y+62},stage:'taxi',speed:105},
+    {point:{x:port.entrance.x,y:from.y+62},stage:'taxi',speed:125},
+    {point:{x:port.entrance.x,y:port.entrance.y+84},stage:'taxi',speed:140},
     {point:port.entrance,stage:'entry',speed:145},
     {point:{x:port.entrance.x,y:port.entrance.y-115},stage:'tractor',speed:225},
     {point:port.departure,stage:'clearance',speed:365,heading:-Math.PI/2},
