@@ -59,8 +59,11 @@ const builder=new BuilderUI(state,()=>{
 },(open:boolean)=>{
   if(open)setFleetOpen(false);
   document.body.dataset.uiPanel=open?'build':fleetOpen?'fleet':'none';
+  scene.drawMothership();
+  scene.refreshCameraZoom();
   updateFlightLock();
 },notice);
+scene.setDeckSelectionHandler((x,y)=>builder.selectCell(x,y));
 const virtualKeys=new Set<string>();
 let touchMine=false;
 function updateVirtualControls():void{
@@ -85,6 +88,7 @@ function setFleetOpen(value:boolean):void{
   $('fleet-panel').setAttribute('aria-hidden',String(!value));
   $('fleet-toggle').setAttribute('aria-expanded',String(value));
   document.body.dataset.uiPanel=value?'fleet':builder.isOpen?'build':'none';
+  scene.refreshCameraZoom();
   updateFlightLock();
   if(value)updateUI();
 }
