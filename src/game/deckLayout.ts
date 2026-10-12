@@ -8,7 +8,7 @@ import type { Point } from '../sim/model';
  */
 export const CELL_SIZE={width:75,height:25} as const;
 export const CORE_DECK={
-  x:-256,y:-74,width:526,height:148,
+  x:-242,y:-74,width:512,height:148,
 } as const;
 export function deckCellPoint(x:number,y:number):Point {
   return {
