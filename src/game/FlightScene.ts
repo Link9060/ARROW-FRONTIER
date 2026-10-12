@@ -4,7 +4,10 @@ import {
   nearestDeposit, switchShip,
 } from '../sim/engine';
 import { distance, DOCK_RADIUS, HOME, MINE_RANGE, WORLD } from '../sim/model';
-import { berthLocalPosition, findAvailableBerth, MOTHERSHIP, shipBerthSpan } from '../sim/hangar';
+import { berthWorldPosition, findAvailableBerth, MOTHERSHIP } from '../sim/hangar';
+import { arrowOutline, hullSize, SHIP_ZONES } from '../sim/arrowGeometry';
+import { dockingRoute, departureRoute, inTractorStage, segmentDuration, shortestAngle } from '../sim/dockingRoute';
+import type { DockWaypoint } from '../sim/dockingRoute';
 import { buildMothershipArtwork } from './MothershipArt';
 import type { MothershipArtwork } from './MothershipArt';
 import { locateDeckCell } from './deckLayout';
@@ -21,6 +24,8 @@ export class FlightScene extends Phaser.Scene {
   private dockRing?: Phaser.GameObjects.Graphics;
   private beam!: Phaser.GameObjects.Graphics;
   private rangeIndicator!: Phaser.GameObjects.Graphics;
+  private tractorBeam!: Phaser.GameObjects.Graphics;
+  private tractorPhase = 0;
   private controlsBlocked = true;
   private virtualMove = {x:0,y:0};
   private virtualMining = false;
@@ -69,6 +74,7 @@ export class FlightScene extends Phaser.Scene {
     }
 
     this.beam = this.add.graphics().setDepth(24);
+    this.tractorBeam = this.add.graphics().setDepth(28);
     this.rangeIndicator = this.add.graphics().setDepth(4);
     this.keys = this.input.keyboard!.addKeys(
       'W,A,S,D,UP,DOWN,LEFT,RIGHT,SPACE,E,Q'
@@ -239,19 +245,33 @@ export class FlightScene extends Phaser.Scene {
     return object;
   }
 
+  /** Every craft uses the exact same 4-vertex mark as the ARROW website. */
   private makeShip(ship: Ship): Phaser.GameObjects.Container {
     const view = this.add.container(ship.x, ship.y).setDepth(19);
     const g = this.add.graphics();
-    const size = shipBerthSpan(ship) > 1 ? 1.22 : 1;
-    g.fillStyle(ship.id==='scout'?0xf4f4f4:0xbbbbbd,.96);
-    g.lineStyle(1.8,0xffffff,.95);
-    g.beginPath();g.moveTo(30,0);g.lineTo(-16,-17);g.lineTo(-9,-3);
-    g.lineTo(-16,17);g.closePath();g.fillPath();g.strokePath();
-    g.fillStyle(0x121214,1);g.fillTriangle(-6,-8,12,0,-6,8);
-    g.fillStyle(0x99999b,.8);g.fillTriangle(-16,-7,-31,0,-16,7);
-    g.lineStyle(1,0x6a879f,.8);g.lineBetween(-11,0,-23,0);
-    view.add(g); view.setScale(size);
-    const label = this.add.text(ship.x,ship.y-42,ship.name,{
+    const size = hullSize(ship);
+    const outline = arrowOutline(size.length,size.widthScale);
+    g.fillStyle(ship.id==='scout'?0xf7f7f7:0xcacacc,1);
+    g.lineStyle(1.4,0xffffff,.95);
+    g.beginPath();
+    outline.forEach(([x,y],i)=>{if(i===0)g.moveTo(x,y);else g.lineTo(x,y);});
+    g.closePath();g.fillPath();g.strokePath();
+    // Subtle material seams and the recognizable inward tail notch remain.
+    g.lineStyle(1,0x666669,.77);
+    g.lineBetween(-size.length*.30,-size.length*.11,size.length*.25,0);
+    g.lineBetween(-size.length*.30,size.length*.11,size.length*.25,0);
+    g.fillStyle(0x101012,.92);
+    g.fillTriangle(size.length*.17,-size.length*.047,size.length*.38,0,size.length*.17,size.length*.047);
+    if(/miner|industrial/i.test(ship.role)){
+      g.lineStyle(2,0x8b8b8d,.86);
+      g.lineBetween(-size.length*.25,-size.length*.27,-size.length*.08,-size.length*.19);
+      g.lineBetween(-size.length*.25,size.length*.27,-size.length*.08,size.length*.19);
+      g.fillStyle(0xebebec,.8);
+      g.fillCircle(-size.length*.13,-size.length*.21,3);
+      g.fillCircle(-size.length*.13,size.length*.21,3);
+    }
+    view.add(g);
+    const label = this.add.text(ship.x,ship.y-51,ship.name,{
       fontFamily:'Inter, sans-serif',fontSize:'12px',color:'#d8d8da',
     }).setOrigin(.5).setDepth(20);
     view.setData('label',label);
