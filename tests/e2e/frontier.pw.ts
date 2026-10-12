@@ -163,6 +163,7 @@ test('dual-side hangars: saved industrial miner occupies lower bay and launches 
   await page.locator('#start-btn').click();
   await page.setViewportSize({width:1536,height:960});
   await expect(page.locator('#hangar-occupancy')).toContainText('3 / 4');
+  await expect(page.locator('#hangar-summary')).toContainText('Hangar B');
   await expect(page.locator('#hangar-summary')).toContainText('MINER-02');
   await page.screenshot({path:'test-results/v06-dual-lower-berth.png'});
   await page.locator('#hangar-launch-btn').click();
@@ -180,10 +181,13 @@ test('dual-side hangars: saved industrial miner occupies lower bay and launches 
   },{timeout:8000}).toBe(true);
   await page.keyboard.down('w');
   try{
-    await expect(page.locator('#pilot-tip')).toContainText('Within docking range',{timeout:15000});
+    // CI software rendering can run well below 30fps. This tests real ship
+    // movement after clicking a focused launch button, not a fixed animation.
+    await expect(page.locator('#pilot-tip')).toContainText('Within docking range',{timeout:22000});
   }finally{await page.keyboard.up('w');}
   await page.locator('#dock-btn').click();
   await expect(page.locator('body')).toHaveAttribute('data-frontier-view','interior',{timeout:50_000});
+  await expect(page.locator('#hangar-summary')).toContainText('Hangar B');
   await expect(page.locator('#hangar-summary')).toContainText('MINER-02');
   await page.screenshot({path:'test-results/v06-dual-lower-return.png'});
   expect(errors).toEqual([]);
