@@ -29,7 +29,7 @@ describe('ARROW hull is solid except in authorized docking transition',()=>{
   });
   it('side hangar collision expands when more physical docking slots are built',()=>{
     const game=makeNewGame();
-    const point={x:HOME.x-290,y:HOME.y-310};
+    const point={x:HOME.x+100,y:HOME.y-285};
     expect(hitsMothership(point,game)).toBe(false);
     game.stored.iron=500;game.stored.copper=500;game.stored.alloy=40;
     expect(buildRoom(game,'hangar',4,2)).toBeNull();
