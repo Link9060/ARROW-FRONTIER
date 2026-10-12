@@ -59,7 +59,7 @@ describe('physical hangar parking rules', () => {
     for(let i=0;i<capacity;i++){
       const berth=berthLocalPosition(i);
       expect(Math.abs(berth.x)).toBeGreaterThan(96);
-      expect(berth.y).toBe(-119-Math.floor(i/4)*138);
+      expect(berth.y).toBe((i%4<2?-1:1)*[106,161,216][Math.floor(i/4)]);
     }
     const miner=game.ships[1];
     expect(findAvailableBerth(game,miner)).toBe(2);
