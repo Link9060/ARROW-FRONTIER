@@ -31,7 +31,7 @@ export class FlightScene extends Phaser.Scene {
   create(): void {
     this.cameras.main.setBackgroundColor('#05070b');
     this.cameras.main.setBounds(0, 0, WORLD.width, WORLD.height);
-    this.cameras.main.setZoom(window.innerWidth < 720 ? 1.05 : window.innerWidth < 1100 ? 1.18 : 1.34);
+    this.refreshCameraZoom();
     this.drawBackground();
     this.drawMothership();
 
@@ -53,6 +53,13 @@ export class FlightScene extends Phaser.Scene {
 
     this.onStateChange();
     this.announce('COMMAND LINK ESTABLISHED · PRESS E TO LAUNCH');
+  }
+
+  /** Keep ship proportions fixed in CSS pixels on standard and Retina displays. */
+  refreshCameraZoom(): void {
+    const dpr = Math.min(2, Math.max(1, window.devicePixelRatio || 1));
+    const zoom = window.innerWidth < 720 ? 1.05 : window.innerWidth < 1100 ? 1.18 : 1.34;
+    this.cameras.main.setZoom(zoom * dpr);
   }
 
   private drawBackground(): void {
