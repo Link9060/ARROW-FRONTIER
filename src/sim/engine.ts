@@ -46,7 +46,9 @@ export function assignShipOrder(state:GameState,id:string,order:FleetOrder):Flee
   }
   ship.order=order;
   ship.mode='auto';
-  if(order==='return')ship.turnaround=0;
+  // Explicit dispatch overrides the passive post-unload dwell. Automatic
+  // repeat trips still retain their short turnaround delay.
+  if(order==='mine'||order==='return')ship.turnaround=0;
   return 'assigned';
 }
 
