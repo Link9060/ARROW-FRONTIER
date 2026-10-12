@@ -136,6 +136,26 @@ function migrateWorldScale(state: GameState): boolean {
   return true;
 }
 
+/**
+ * Repair saves written by older builds in the middle of their docking tween.
+ * Prevents a flying vessel from spawning inside opaque mothership armor.
+ * Docked vessels are already placed in a valid berth by reconcileBerths().
+ */
+export function recoverInterruptedDocking(state:GameState):boolean {
+  let changed=false;
+  for(let index=0;index<state.ships.length;index++){
+    const ship=state.ships[index];
+    if(ship.docked)continue;
+    const rx=ship.x-HOME.x,ry=ship.y-HOME.y;
+    if(Math.abs(rx)<555 && Math.abs(ry)<350){
+      ship.x=MOTHERSHIP.departure.x+index*82;
+      ship.y=MOTHERSHIP.departure.y-30;
+      changed=true;
+    }
+  }
+  return changed;
+}
+
 export interface LoadResult { state: GameState; offlineSeconds: number; recovered: boolean; migrated: boolean; }
 export function loadGame(now = Date.now()): LoadResult {
   try {
@@ -147,11 +167,12 @@ export function loadGame(now = Date.now()): LoadResult {
     if (loaded) {
       const expandedWorld = migrateWorldScale(loaded);
       reconcileBerths(loaded);
+      const recoveredDocking=recoverInterruptedDocking(loaded);
       loaded.storageCapacity = capacityFor(loaded.rooms);
       const seconds = simulateOffline(loaded, Math.max(0, (now - loaded.savedAt) / 1000));
       loaded.savedAt = now;
       // Commit the new coordinates and berth assignments without deleting old saves.
-      if (migrated || expandedWorld) saveGame(loaded, now);
+      if (migrated || expandedWorld || recoveredDocking) saveGame(loaded, now);
       return { state: loaded, offlineSeconds: seconds, recovered: true, migrated };
     }
   } catch (error) {
