@@ -32,6 +32,25 @@ export function hangarCapacity(state: Pick<GameState, 'rooms'>): number {
     .reduce((capacity, room) => capacity + 4 * room.level, 0));
 }
 
+export interface DockingPort {
+  entrance:Point; approach:Point; departure:Point; tractor:Point;
+}
+/**
+ * Hangar growth moves the physical side entrance and tractor along the newly
+ * constructed outer plating. Nothing clips through later parking rows.
+ */
+export function dockingPort(state:Pick<GameState,'rooms'>):DockingPort {
+  const extraRows=Math.max(0,Math.ceil(hangarCapacity(state)/BERTH_COLUMNS)-1);
+  const shift=-112*extraRows;
+  const move=(point:Point):Point=>({x:point.x,y:point.y+shift});
+  return {
+    entrance:move(MOTHERSHIP.entrance),
+    approach:move(MOTHERSHIP.approach),
+    departure:move(MOTHERSHIP.departure),
+    tractor:move({x:HOME.x+SHIP_ZONES.tractor.x,y:HOME.y+SHIP_ZONES.tractor.y}),
+  };
+}
+
 export function berthRange(index: number, span: number): number[] {
   return Array.from({ length: span }, (_, i) => index + i);
 }
