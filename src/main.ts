@@ -90,6 +90,7 @@ function updatePanel(): void {
     ? String((ship.berth ?? 0) + 1).padStart(2, '0') : 'IN FLIGHT';
   byId('hangar-occupancy').textContent = dockedBerthCount(state) + ' / ' +
     hangarCapacity(state) + ' SPACES';
+  byId('hangar-camera-zoom').textContent = Math.round(scene.getCameraStatus().zoom * 100) + '%';
   byId('cargo').textContent = roundCargo(aboard) + ' / ' + ship.capacity;
   byId('cargo-fill').style.width = Math.min(100, 100 * aboard / ship.capacity) + '%';
   byId('ship-iron').textContent = roundCargo(ship.cargo.iron);
@@ -225,6 +226,14 @@ window.addEventListener('keydown', (event) => {
       !(event.target instanceof HTMLInputElement) &&
       !(event.target instanceof HTMLTextAreaElement)) {
     setCommandOpen(!commandOpen);
+    event.preventDefault();
+  } else if ((event.code === 'KeyE' || event.key.toLowerCase() === 'e') &&
+      !commandOpen && !builder.isOpen) {
+    requestLaunchOrDock();
+    event.preventDefault();
+  } else if ((event.code === 'KeyQ' || event.key.toLowerCase() === 'q') &&
+      !commandOpen && !builder.isOpen && scene.viewMode !== 'transition') {
+    scene.nextShip();
     event.preventDefault();
   }
 });
