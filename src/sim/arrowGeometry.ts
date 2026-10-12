@@ -33,8 +33,10 @@ export const SHIP_ZONES = {
   engine: { x: -480, y: 0 },
   spine: { x: -120, y: 0 },
   hangar: { x: -115, y: -178 },
-  airlock: { x: -115, y: -354 },
-  tractor: { x: -115, y: -379 },
+  // Side door sits just outside the physical hangar shell, not at the end of
+  // the long detached tube from the early prototype.
+  airlock: { x: -115, y: -271 },
+  tractor: { x: -115, y: -296 },
 } as const;
 
 /** Ship type adjusts thickness, not identity. */
