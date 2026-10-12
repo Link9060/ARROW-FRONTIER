@@ -1,13 +1,25 @@
 # ARROW: FRONTIER
 > **A persistent 2D space exploration, mining, fleet automation, economy, and civilization-building game within Project ARROW.**
 
-**Status:** Playable browser prototype v0.6 (first physical-mothership slice); major planned features remain unimplemented  
+**Status:** Playable browser prototype v0.6.1 (game-quality cleanup); major planned features remain unimplemented  
 **Document:** Master game design README, version 0.1  
 **Parent ecosystem:** Project ARROW / Resonant Assist  
 **Game:** ARROW: FRONTIER (AF)  
 **Core experience:** Build a mobile civilization, pilot ships manually, automate fleets with game-native RAVIN logic, explore and trade across star systems, and optionally enter a shared multiplayer multiverse.
 
 > This README is a **design specification**, not a statement that these systems are already implemented. Sections distinguish **agreed direction**, **proposed implementation**, and **open decisions**. Numbers and sample names are placeholders for balancing.
+
+## v0.6.1 · Mothership Quality Pass
+
+**Release objective:** Fix the player's reported stretched `Launching…` overlay, odd camera framing, disjointed interior rooms, and arbitrary parking geometry without breaking saves.
+
+The white overlay bug is fixed at its CSS source. The mothership now opens without an intrusive automatic banner, uses dark contextual notifications, and moves from wide ship view into a controlled departure close-up before flying out. Rooms now appear as equipment on a common lower-wing engineering deck, while the command bridge, engine assemblies and core reactor are permanent physical architecture.
+
+Hangar rows are separated into left and right parking banks with a clear central taxi aisle; the docking autopilot travels along that passage and turns into an assigned berth. Camera fit, airlock coordinates, animation and hull collision honor the full size of expanded 12-bay saves. Thin exhaust and runway lights make ships and docks feel active without visual clutter.
+
+Three Chromium browser flows cover desktop flight/mining/docking, mobile controls, and a previously upgraded 12-bay world at **1536×960**. See [the QA checklist](docs/FRONTIER-V0.6.1-QUALITY-PASS.md).
+
+**Still planned:** Richer mechanical room upgrades, docking traffic scheduling, ship-to-ship collisions, ambient sound, and further animation polish.
 
 ## v0.6 · Living Mothership (First Implementation Slice)
 
