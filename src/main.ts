@@ -6,7 +6,7 @@ import { activeShip, roundCargo } from './sim/engine';
 import { cargoTotal, distance, DOCK_RADIUS, HOME, storedTotal } from './sim/model';
 import { dockedBerthCount, hangarCapacity } from './sim/hangar';
 import { powerReport } from './sim/mothership';
-import { loadGame, resetGame, saveGame } from './sim/persistence';
+import { loadGame, saveGame } from './sim/persistence';
 import { BuilderUI } from './ui/BuilderUI';
 
 const loaded=loadGame();
