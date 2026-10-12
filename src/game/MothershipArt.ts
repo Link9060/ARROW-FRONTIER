@@ -168,7 +168,7 @@ export function buildMothershipArtwork(scene:Phaser.Scene,state:GameState,
   // Hangar floor: additional owned berth rows extend the SIDE superstructure.
   const capacity=Math.min(MAX_BERTHS,hangarCapacity(state));
   const rowCount=Math.max(1,Math.ceil(capacity/4));
-  const floorTop=-183-(rowCount-1)*112;
+  const floorTop=-183-(rowCount-1)*138;
   const floorBottom=-45;
   const floorHeight=floorBottom-floorTop;
   structural.fillStyle(0x0b0b0d,1);
@@ -186,16 +186,28 @@ export function buildMothershipArtwork(scene:Phaser.Scene,state:GameState,
   for(let berth=0;berth<capacity;berth++){
     const p=berthLocalPosition(berth);
     structural.lineStyle(1.8,0xc4c4c5,.6);
-    structural.strokeRoundedRect(p.x-61,p.y-36,122,72,6);
+    structural.strokeRoundedRect(p.x-45,p.y-42,90,84,6);
     structural.lineStyle(3,0xe4e4e5,.32);
-    structural.lineBetween(p.x-55,p.y-26,p.x-55,p.y+26);
-    structural.lineBetween(p.x+55,p.y-26,p.x+55,p.y+26);
+    structural.lineBetween(p.x-39,p.y-29,p.x-39,p.y+29);
+    structural.lineBetween(p.x+39,p.y-29,p.x+39,p.y+29);
     structural.fillStyle(0xe9e9e9,.47);
-    structural.fillCircle(p.x-55,p.y+26,3);
-    structural.fillCircle(p.x+55,p.y+26,3);
-    label(scene,interior,p.x,p.y+46,String(berth+1).padStart(2,'0'),10,'#b9b9ba');
+    structural.fillCircle(p.x-39,p.y+29,3);
+    structural.fillCircle(p.x+39,p.y+29,3);
+    label(scene,interior,p.x,p.y-34,String(berth+1).padStart(2,'0'),9,'#99999c');
   }
-  label(scene,interior,50,floorBottom+24,'HANGAR / DOCKING',11,'#d3d3d3');
+  // A clear through-aisle separates left and right parking banks. The
+  // guided ship travels here and enters its bay only from the row service lane.
+  structural.fillStyle(0x1b1b1d,.92);
+  structural.fillRect(-48,floorTop+6,96,floorHeight-12);
+  structural.lineStyle(1.5,0xb4b4b8,.53);
+  structural.lineBetween(-48,floorTop+7,-48,floorBottom-7);
+  structural.lineBetween(48,floorTop+7,48,floorBottom-7);
+  structural.lineStyle(1,0xc7c7c9,.28);
+  for(let aisleY=floorTop+24;aisleY<floorBottom-20;aisleY+=45){
+    structural.lineBetween(-8,aisleY,0,aisleY+8);
+    structural.lineBetween(8,aisleY,0,aisleY+8);
+  }
+  label(scene,interior,106,floorBottom+24,'HANGAR / TAXI AISLE',10,'#a7a7a9');
 
   // Physical side access: door housing, passage and a tractor emitter.
   const port=dockingPort(state);
@@ -206,21 +218,21 @@ export function buildMothershipArtwork(scene:Phaser.Scene,state:GameState,
   const passageLength=Math.max(20,passageBottom-passageTop);
   structural.fillStyle(0x252527,1);
   structural.lineStyle(1.8,0x929294,.85);
-  structural.fillRoundedRect(-157,passageTop,84,passageLength,6);
-  structural.strokeRoundedRect(-157,passageTop,84,passageLength,6);
+  structural.fillRoundedRect(-42,passageTop,84,passageLength,6);
+  structural.strokeRoundedRect(-42,passageTop,84,passageLength,6);
   structural.lineStyle(1,0xd0d0d2,.27);
-  structural.lineBetween(-115,passageTop+6,-115,passageTop+passageLength-6);
+  structural.lineBetween(0,passageTop+6,0,passageTop+passageLength-6);
   structural.fillStyle(0x272729,1);
   structural.lineStyle(2.2,0xe3e3e3,.87);
-  structural.fillRoundedRect(-174,doorY-13,116,41,7);
-  structural.strokeRoundedRect(-174,doorY-13,116,41,7);
+  structural.fillRoundedRect(-60,doorY-13,120,41,7);
+  structural.strokeRoundedRect(-60,doorY-13,120,41,7);
   structural.lineStyle(1,0xffffff,.38);
-  for(let i=0;i<7;i++)structural.lineBetween(-161+i*15,doorY-9,-161+i*15,doorY+24);
+  for(let i=0;i<7;i++)structural.lineBetween(-45+i*15,doorY-9,-45+i*15,doorY+24);
   structural.lineStyle(2,0xa1a1a1,.5);
-  structural.lineBetween(-114,doorY+29,-114,floorTop+4);
+  structural.lineBetween(0,doorY+29,0,floorTop+4);
   structural.fillStyle(0xf4f4f4,.83);
   structural.fillCircle(port.tractor.x-homeX,port.tractor.y-homeY,7);
-  label(scene,interior,-114,doorY-36,'AIRLOCK A',10,'#e1e1e1');
+  label(scene,interior,0,doorY-36,'AIRLOCK A',10,'#e1e1e1');
 
   // Existing room ids/coordinates remain the same; each renderer uses the
   // exact physical deck mapping also used by direct mouse selection.
@@ -265,6 +277,15 @@ export function buildMothershipArtwork(scene:Phaser.Scene,state:GameState,
     const p=berthLocalPosition(i);
     armor.lineBetween(p.x-52,p.y-53,p.x+52,p.y-53);
   }
+  // Exterior service spine physically joins the external airlock to the
+  // hangar roof. Expanded bays extend this connector with the hull.
+  armor.fillStyle(0x242427,1);
+  armor.lineStyle(2,0xa7a7ac,.75);
+  armor.fillRoundedRect(-52,doorY+16,104,Math.max(27,shellTop-(doorY+16))+10,6);
+  armor.strokeRoundedRect(-52,doorY+16,104,Math.max(27,shellTop-(doorY+16))+10,6);
+  armor.lineStyle(1,0xffffff,.32);
+  armor.lineBetween(0,doorY+23,0,shellTop+4);
+
   // Cockpit and central structure remain strongly tied to the mark's nose.
   armor.fillStyle(0x080809,1);
   armor.lineStyle(2,0xd0d0d0,.88);
@@ -286,9 +307,9 @@ export function buildMothershipArtwork(scene:Phaser.Scene,state:GameState,
   }
   armor.fillStyle(0x111113,1);
   armor.lineStyle(2,0xe0e0e0,.9);
-  armor.fillRoundedRect(-176,doorY-19,123,52,7);
-  armor.strokeRoundedRect(-176,doorY-19,123,52,7);
-  label(scene,roof,-118,doorY-41,'HANGAR A',12,'#f1f1f1');
+  armor.fillRoundedRect(-62,doorY-19,124,52,7);
+  armor.strokeRoundedRect(-62,doorY-19,124,52,7);
+  label(scene,roof,0,doorY-41,'HANGAR A',12,'#f1f1f1');
   label(scene,roof,-155,3,'A R R O W',25,'#ededed');
   label(scene,roof,0,468,'MOTHERSHIP 01',12,'#b3b3b5');
 
@@ -296,7 +317,7 @@ export function buildMothershipArtwork(scene:Phaser.Scene,state:GameState,
   // retracts sideways before the vessel enters. Both halves stay visible
   // throughout the transition rather than teleporting out of existence.
   const doors=scene.add.container(homeX,homeY).setDepth(29);
-  const doorCenterX=-115;
+  const doorCenterX=port.entrance.x-homeX;
   const createLeaf=(side:-1|1):Phaser.GameObjects.Container=>{
     const leaf=scene.add.container(doorCenterX+side*29,doorY);
     const panel=scene.add.graphics();
