@@ -131,7 +131,7 @@ export function buildMothershipArtwork(scene:Phaser.Scene,state:GameState,
   for(let j=0;j<7;j++){
     const x=-225+j*73;
     g.lineStyle(1,0x94949c,.16);
-    g.lineBetween(x,-71,x,70);
+    g.lineBetween(x,CORE_DECK.y+5,x,CORE_DECK.y+CORE_DECK.height-5);
   }
   label(scene,interior,312,-72,'MODULAR CORE',9,'#99999f');
   drawFixedSystems(scene,interior,g);
