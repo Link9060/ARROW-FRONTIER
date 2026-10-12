@@ -4,8 +4,8 @@ import {
   nearestDeposit, switchShip,
 } from '../sim/engine';
 import { distance, DOCK_RADIUS, HOME, MINE_RANGE, WORLD } from '../sim/model';
-import { berthWorldPosition, findAvailableBerth } from '../sim/hangar';
-import { arrowOutline, hullSize, SHIP_ZONES } from '../sim/arrowGeometry';
+import { berthWorldPosition, dockingPort, findAvailableBerth } from '../sim/hangar';
+import { arrowOutline, hullSize } from '../sim/arrowGeometry';
 import { dockingRoute, departureRoute, inTractorStage, segmentDuration, shortestAngle } from '../sim/dockingRoute';
 import type { DockWaypoint } from '../sim/dockingRoute';
 import { buildMothershipArtwork } from './MothershipArt';
@@ -415,8 +415,9 @@ export class FlightScene extends Phaser.Scene {
   /** A subtle physical tether originates from the shoulder's tractor emitter. */
   private drawTractor(ship:Ship, progress:number):void {
     this.tractorBeam.clear();
-    const sx=HOME.x+SHIP_ZONES.tractor.x;
-    const sy=HOME.y+SHIP_ZONES.tractor.y;
+    const port=dockingPort(this.state);
+    const sx=port.tractor.x;
+    const sy=port.tractor.y;
     const dx=ship.x-sx,dy=ship.y-sy,dist=Math.hypot(dx,dy);
     if(dist<6)return;
     const ux=dx/dist,uy=dy/dist,px=-uy,py=ux;
@@ -541,7 +542,7 @@ export class FlightScene extends Phaser.Scene {
     // Read the real berth position without modifying the ship or the save.
     const parked={...ship,berth};
     const destination=berthWorldPosition(parked);
-    const waypoints=dockingRoute(ship,destination);
+    const waypoints=dockingRoute(ship,destination,dockingPort(this.state));
     this.cameraTouched=false;
     this.cameras.main.stopFollow();
     this.setViewMode('transition');
@@ -577,8 +578,13 @@ export class FlightScene extends Phaser.Scene {
     this.cameras.main.stopFollow();
     this.setViewMode('transition');
     this.announce('UNDOCKING · RELEASE CLAMPS');
-    this.flyRoute(ship,departureRoute(ship),true,()=>{
+    const port=dockingPort(this.state);
+    this.flyRoute(ship,departureRoute(ship,port),true,()=>{
       launchShip(ship);
+      // Align the launch result with the actual expanded airlock, not the
+      // original level-one departure location.
+      ship.x=port.departure.x;
+      ship.y=port.departure.y;
       this.setArtworkOpacity(1);
       this.setViewMode('flight');
       this.cameras.main.setZoom(this.flightZoom());
