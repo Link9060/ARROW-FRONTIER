@@ -178,17 +178,33 @@ export class FlightScene extends Phaser.Scene {
       right:panelOpen ? Math.min(365,window.innerWidth*.32) : 0,
     };
   }
+  private interiorVerticalBounds(): {top:number;bottom:number} {
+    const port=dockingPort(this.state);
+    // One to three hangar rows changes the real vertical dimensions.
+    // Fit the EXTENDED AIRLOCK too, not just the original arrow hull.
+    return {
+      top:Math.min(-500,port.tractor.y-HOME.y-76),
+      bottom:500,
+    };
+  }
   private interiorZoom(): number {
     const margins=this.interiorMargins();
-    const availableWidth=Math.max(240,window.innerWidth-margins.left-margins.right-55);
-    const availableHeight=Math.max(280,window.innerHeight-155);
-    return Math.max(.24,Math.min(1.12,availableWidth/1220,availableHeight/850))*this.deviceScale();
+    const availableWidth=Math.max(260,window.innerWidth-margins.left-margins.right-55);
+    const availableHeight=Math.max(290,window.innerHeight-175);
+    const bounds=this.interiorVerticalBounds();
+    const shipHeight=bounds.bottom-bounds.top;
+    return Math.max(.23,Math.min(1.04,
+      availableWidth/1290,availableHeight/shipHeight))*this.deviceScale();
   }
   private interiorFocus(): Point {
     const margins=this.interiorMargins();
     const offset=(margins.left-margins.right)/2;
     const cssZoom=this.interiorZoom()/this.deviceScale();
-    return {x:HOME.x-offset/Math.max(.24,cssZoom),y:HOME.y};
+    const bounds=this.interiorVerticalBounds();
+    return {
+      x:HOME.x-offset/Math.max(.23,cssZoom),
+      y:HOME.y+(bounds.top+bounds.bottom)/2,
+    };
   }
   getCameraStatus(): { zoom: number; worldX: number; worldY: number } {
     const camera=this.cameras?.main;
