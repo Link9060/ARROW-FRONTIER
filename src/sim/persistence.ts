@@ -42,7 +42,7 @@ function validAsteroids(value: unknown): boolean {
     finite(a.x) && finite(a.y) && finite(a.remaining) && finite(a.size)
   );
 }
-function validBase(value: unknown): value is Record<string, unknown> {
+function validBase(value: unknown): value is Record<string, unknown> & { ships: Ship[]; savedAt: number; activeShipId: string; lifetimeMined: number; storageCapacity: number } {
   if (!isRecord(value) || !validShips(value.ships) || !validAsteroids(value.asteroids) ||
       typeof value.activeShipId !== 'string' || !value.ships.some((s) => s.id === value.activeShipId) ||
       !finite(value.savedAt) || !finite(value.lifetimeMined) ||
