@@ -17,7 +17,7 @@ function validCargo(value: unknown): value is Cargo {
   return isRecord(value) && finite(value.iron) && finite(value.copper);
 }
 function validResources(value: unknown): value is Resources {
-  return validCargo(value) && finite(value.alloy);
+  return validCargo(value) && finite((value as Partial<Resources>).alloy);
 }
 function validShips(value: unknown): value is Ship[] {
   if (!Array.isArray(value) || value.length === 0) return false;
