@@ -7,6 +7,7 @@ import { distance, DOCK_RADIUS, HOME, MINE_RANGE, WORLD } from '../sim/model';
 import { berthLocalPosition, findAvailableBerth, MOTHERSHIP, shipBerthSpan } from '../sim/hangar';
 import { buildMothershipArtwork } from './MothershipArt';
 import type { MothershipArtwork } from './MothershipArt';
+import { locateDeckCell } from './deckLayout';
 import type { Asteroid, GameState, Point, Ship } from '../sim/model';
 
 export type ViewMode = 'flight' | 'interior' | 'transition';
@@ -28,6 +29,8 @@ export class FlightScene extends Phaser.Scene {
   private mode: ViewMode = 'flight';
   private pinch?: PinchGesture;
   private cameraTouched = false;
+  private deckClick?: (x:number,y:number)=>void;
+  private hadMultitouch = false;
   private timeToSave = 0;
   private timeToUpdateUI = 0;
   private state: GameState;
@@ -47,6 +50,9 @@ export class FlightScene extends Phaser.Scene {
   }
 
   get viewMode(): ViewMode { return this.mode; }
+  setDeckSelectionHandler(handler:(x:number,y:number)=>void):void {
+    this.deckClick=handler;
+  }
 
   create(): void {
     const camera = this.cameras.main;
@@ -70,6 +76,14 @@ export class FlightScene extends Phaser.Scene {
     this.cameraAnchor = this.add.zone(HOME.x, HOME.y, 1, 1).setVisible(false);
     this.input.addPointer(3);
     this.game.canvas.style.touchAction = 'none';
+    this.input.on('pointerup',(pointer:Phaser.Input.Pointer)=>{
+      if(this.mode!=='interior'||document.body.dataset.uiPanel!=='build')return;
+      if(this.hadMultitouch)return;
+      const x=pointer.worldX-HOME.x;
+      const y=pointer.worldY-HOME.y;
+      const cell=locateDeckCell(x,y);
+      if(cell)this.deckClick?.(cell.x,cell.y);
+    });
 
     // A trackpad two-finger swipe pans. Trackpad pinch (ctrl+wheel) zooms.
     // Touchscreen two-finger pan/pinch is handled in updateTouchNavigation().
@@ -209,8 +223,8 @@ export class FlightScene extends Phaser.Scene {
     const object = this.add.container(asteroid.x, asteroid.y).setDepth(10);
     const graphics = this.add.graphics();
     const size = asteroid.size;
-    graphics.fillStyle(asteroid.ore === 'copper' ? 0x475d70 : 0x667d93, .78);
-    graphics.lineStyle(2, asteroid.ore === 'copper' ? 0xb6afad : 0xd1e2f5, .87);
+    graphics.fillStyle(asteroid.ore === 'copper' ? 0x656567 : 0x7d7d7f, .8);
+    graphics.lineStyle(1.5, asteroid.ore === 'copper' ? 0xc7c7c8 : 0xe1e1e1, .85);
     graphics.beginPath();
     for (let i=0;i<=8;i++) {
       const angle = i * Math.PI / 4;
@@ -219,11 +233,11 @@ export class FlightScene extends Phaser.Scene {
       else graphics.lineTo(Math.cos(angle)*size*irregular,Math.sin(angle)*size*irregular);
     }
     graphics.closePath();graphics.fillPath();graphics.strokePath();
-    graphics.lineStyle(1,0xd2e0ee,.4);
+    graphics.lineStyle(1,0xd1d1d1,.4);
     graphics.lineBetween(-size*.3,-size*.24,size*.37,size*.18);
     object.add(graphics);
     object.add(this.add.text(0,-size-26,asteroid.ore.toUpperCase(),{
-      fontFamily:'monospace',fontSize:'12px',color:'#9db8cc',
+      fontFamily:'Inter, sans-serif',fontSize:'11px',color:'#ababac',
     }).setOrigin(.5));
     object.setVisible(asteroid.remaining > 0);
     return object;
@@ -233,16 +247,16 @@ export class FlightScene extends Phaser.Scene {
     const view = this.add.container(ship.x, ship.y).setDepth(19);
     const g = this.add.graphics();
     const size = shipBerthSpan(ship) > 1 ? 1.22 : 1;
-    g.fillStyle(ship.id==='scout'?0xeaf6ff:0xb3cee3,.96);
+    g.fillStyle(ship.id==='scout'?0xf4f4f4:0xbbbbbd,.96);
     g.lineStyle(1.8,0xffffff,.95);
     g.beginPath();g.moveTo(30,0);g.lineTo(-16,-17);g.lineTo(-9,-3);
     g.lineTo(-16,17);g.closePath();g.fillPath();g.strokePath();
-    g.fillStyle(0x071421,1);g.fillTriangle(-6,-8,12,0,-6,8);
-    g.fillStyle(0x8bbce4,.8);g.fillTriangle(-16,-7,-31,0,-16,7);
+    g.fillStyle(0x121214,1);g.fillTriangle(-6,-8,12,0,-6,8);
+    g.fillStyle(0x99999b,.8);g.fillTriangle(-16,-7,-31,0,-16,7);
     g.lineStyle(1,0x6a879f,.8);g.lineBetween(-11,0,-23,0);
     view.add(g); view.setScale(size);
     const label = this.add.text(ship.x,ship.y-42,ship.name,{
-      fontFamily:'monospace',fontSize:'12px',color:'#c5d9e9',
+      fontFamily:'Inter, sans-serif',fontSize:'12px',color:'#d8d8da',
     }).setOrigin(.5).setDepth(20);
     view.setData('label',label);
     return view;
@@ -260,7 +274,7 @@ export class FlightScene extends Phaser.Scene {
       const label=view.getData('label') as Phaser.GameObjects.Text;
       label.setPosition(ship.x,ship.y-43);
       label.setVisible(visible);
-      label.setColor(ship.id===this.state.activeShipId?'#eaf6ff':'#9db3c8');
+      label.setColor(ship.id===this.state.activeShipId?'#eeeeee':'#99999c');
     }
     for(const asteroid of this.state.asteroids){
       const view=this.asteroidViews.get(asteroid.id);
@@ -516,7 +530,12 @@ export class FlightScene extends Phaser.Scene {
   private updateTouchNavigation():void {
     if(this.mode!=='interior'){this.pinch=undefined;return;}
     const held=this.input.manager.pointers.filter(pointer=>pointer.isDown);
-    if(held.length<2){this.pinch=undefined;return;}
+    if(held.length<2){
+      this.pinch=undefined;
+      if(held.length===0)this.hadMultitouch=false;
+      return;
+    }
+    this.hadMultitouch=true;
     const [one,two]=held;
     const cx=(one.x+two.x)/2,cy=(one.y+two.y)/2;
     const separation=Math.max(8,Math.hypot(one.x-two.x,one.y-two.y));
