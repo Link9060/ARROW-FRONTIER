@@ -13,6 +13,7 @@ import type { MothershipArtwork } from './MothershipArt';
 import { locateDeckCell } from './deckLayout';
 import { resolveHullMovement } from '../sim/hullCollision';
 import { MiningEffects } from './MiningEffects';
+import { MothershipAtmosphere } from './MothershipAtmosphere';
 import type { Asteroid, GameState, Point, Ship } from '../sim/model';
 
 export type ViewMode = 'flight' | 'interior' | 'transition';
@@ -25,6 +26,7 @@ export class FlightScene extends Phaser.Scene {
   private art?: MothershipArtwork;
   private dockRing?: Phaser.GameObjects.Graphics;
   private miningEffects!: MiningEffects;
+  private atmosphere!: MothershipAtmosphere;
   private rangeIndicator!: Phaser.GameObjects.Graphics;
   private tractorBeam!: Phaser.GameObjects.Graphics;
   private tractorPhase = 0;
@@ -76,6 +78,7 @@ export class FlightScene extends Phaser.Scene {
     }
 
     this.miningEffects = new MiningEffects(this);
+    this.atmosphere = new MothershipAtmosphere(this);
     this.tractorBeam = this.add.graphics().setDepth(28);
     this.rangeIndicator = this.add.graphics().setDepth(4);
     this.keys = this.input.keyboard!.addKeys(
@@ -773,6 +776,7 @@ export class FlightScene extends Phaser.Scene {
     }
     this.refreshViews();
     this.miningEffects.update(delta/1000);
+    this.atmosphere.update(delta/1000,this.state,this.art?.roof.alpha ?? 1);
     this.timeToUpdateUI+=delta/1000;
     this.timeToSave+=elapsed;
     if(this.timeToUpdateUI>=.15){
