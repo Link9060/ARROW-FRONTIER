@@ -1,4 +1,4 @@
-import Phaser from 'phaser';
+import type Phaser from 'phaser';
 import type { Asteroid, Point } from '../sim/model';
 
 interface Spark {
