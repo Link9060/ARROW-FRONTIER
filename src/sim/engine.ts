@@ -6,6 +6,7 @@ import type { Asteroid, FleetOrder, GameState, Ship } from './model';
 import { runIndustry } from './mothership';
 import { berthWorldPosition, findAvailableBerth, sideForBerth, berthHeading } from './hangar';
 import { portLocal } from './flagshipLayout';
+import { advanceFleetNavigation, beginFleetDock, beginFleetLaunch } from './fleetNavigation';
 
 export type DockResult = 'docked' | 'too-far' | 'already-docked' | 'hangar-full';
 
@@ -31,7 +32,9 @@ export function assignShipOrder(state:GameState,id:string,order:FleetOrder):Flee
   if(id===state.activeShipId)return 'active-ship';
   if(order==='hold'){
     ship.order='hold';
-    ship.mode='hold';
+    // Finish an active airlock taxi safely before stopping. Parking halfway
+    // through a hatch would obstruct both hangars.
+    ship.mode=ship.navigation?'auto':'hold';
     ship.turnaround=0;
     return 'assigned';
   }
@@ -70,6 +73,7 @@ export function launchShip(ship: Ship): boolean {
   const previousSide=sideForBerth(ship.berth??0);
   const localDeparture=portLocal(previousSide).departure;
   ship.docked=false;
+  ship.navigation=undefined;
   ship.berth=undefined;
   ship.x=HOME.x+localDeparture.x;
   ship.y=HOME.y+localDeparture.y;
@@ -102,6 +106,7 @@ export function dockShip(state: GameState, ship: Ship): DockResult {
   ship.x = position.x;
   ship.y = position.y;
   ship.angle=berthHeading(berth);
+  ship.navigation=undefined;
   depositCargo(state,ship);
   // Give autonomous ships a real unloading interval instead of disappearing
   // into a berth and instantly spawning outside in the same frame.
@@ -149,6 +154,11 @@ function travel(ship: Ship, destination: { x: number; y: number }, seconds: numb
 /** Explain a ship's current work without confusing a held ship with a broken AI. */
 export function fleetShipStatus(state:GameState,ship:Ship):string {
   if(ship.id===state.activeShipId)return 'PILOTING';
+  if(ship.navigation){
+    const side=ship.navigation.side==='north'?'A':'B';
+    const action=ship.navigation.kind==='launch'?'LAUNCHING':'DOCKING';
+    return action+' · HANGAR '+side;
+  }
   if(ship.mode==='hold'||shipOrder(ship)==='hold')
     return ship.docked?'DOCKED · IDLE':'HOLDING POSITION';
   const order=shipOrder(ship);
@@ -181,13 +191,37 @@ export function runAutomation(state:GameState,seconds:number):void {
   for(const ship of state.ships){
     if(ship.id===state.activeShipId||ship.mode!=='auto')continue;
     const order=shipOrder(ship);
+
+    // Physical routes run independently of the active player's cinematic.
+    // Finish any already occupied airlock before handling a new order.
+    if(ship.navigation){
+      const complete=advanceFleetNavigation(state,ship,seconds);
+      if(complete==='docked'){
+        const result=dockShip(state,ship);
+        if(result!=='docked'){
+          // A berth cannot be reassigned while reserved, but recover safely
+          // from any corrupted or conflicting saved berth.
+          ship.navigation=undefined;
+          ship.berth=undefined;
+          continue;
+        }
+        if(order==='return'||order==='hold'){
+          ship.mode='hold';ship.order='hold';ship.turnaround=0;
+        }
+      }else if(complete==='launched'&&order==='hold'){
+        ship.mode='hold';ship.order='hold';
+      }
+      continue;
+    }
+
     if(order==='hold'){ship.mode='hold';continue;}
     if(ship.docked){
       if(order==='return'){
         ship.mode='hold';ship.order='hold';ship.turnaround=0;
         continue;
       }
-      // A previous trip may have been unable to unload all cargo.
+      // If storage was full, keep any undelivered ore on board and try
+      // again as soon as the mothership has available capacity.
       if(cargoTotal(ship.cargo)>.001)depositCargo(state,ship);
       if(cargoTotal(ship.cargo)>.001)continue;
       if(storedTotal(state.stored)>=state.storageCapacity-.001)continue;
@@ -196,8 +230,8 @@ export function runAutomation(state:GameState,seconds:number):void {
         ship.turnaround=Math.max(0,ship.turnaround-seconds);
         continue;
       }
-      launchShip(ship);
-      ship.turnaround=0;
+      if(beginFleetLaunch(ship))ship.turnaround=0;
+      continue;
     }
 
     const full=cargoTotal(ship.cargo)>=ship.capacity-.001;
@@ -206,11 +240,10 @@ export function runAutomation(state:GameState,seconds:number):void {
       storedTotal(state.stored)>=state.storageCapacity-.001;
     if(returnHome){
       if(travel(ship,HOME,seconds,DOCK_RADIUS-10)){
-        const result=dockShip(state,ship);
-        if(result==='docked'&&order==='return'){
-          ship.mode='hold';ship.order='hold';ship.turnaround=0;
-        }
-        // Full hangar is a waiting condition. Don't erase the order.
+        const berth=findAvailableBerth(state,ship);
+        if(berth!==null)beginFleetDock(ship,berth);
+        // A full hangar is a queueing condition. Mission persists until a
+        // space opens; don't replace it with Hold.
       }
       continue;
     }
