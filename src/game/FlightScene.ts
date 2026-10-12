@@ -11,6 +11,7 @@ import type { DockWaypoint } from '../sim/dockingRoute';
 import { buildMothershipArtwork } from './MothershipArt';
 import type { MothershipArtwork } from './MothershipArt';
 import { locateDeckCell } from './deckLayout';
+import { MiningEffects } from './MiningEffects';
 import type { Asteroid, GameState, Point, Ship } from '../sim/model';
 
 export type ViewMode = 'flight' | 'interior' | 'transition';
@@ -22,7 +23,7 @@ export class FlightScene extends Phaser.Scene {
   private asteroidViews = new Map<string, Phaser.GameObjects.Container>();
   private art?: MothershipArtwork;
   private dockRing?: Phaser.GameObjects.Graphics;
-  private beam!: Phaser.GameObjects.Graphics;
+  private miningEffects!: MiningEffects;
   private rangeIndicator!: Phaser.GameObjects.Graphics;
   private tractorBeam!: Phaser.GameObjects.Graphics;
   private tractorPhase = 0;
@@ -73,7 +74,7 @@ export class FlightScene extends Phaser.Scene {
       this.shipViews.set(ship.id, this.makeShip(ship));
     }
 
-    this.beam = this.add.graphics().setDepth(24);
+    this.miningEffects = new MiningEffects(this);
     this.tractorBeam = this.add.graphics().setDepth(28);
     this.rangeIndicator = this.add.graphics().setDepth(4);
     this.keys = this.input.keyboard!.addKeys(
@@ -343,7 +344,6 @@ export class FlightScene extends Phaser.Scene {
   }
 
   private stepMining(dt:number):void {
-    this.beam.clear();
     const ship=activeShip(this.state);
     if(ship.docked)return;
     let target: Asteroid | undefined;
@@ -360,10 +360,7 @@ export class FlightScene extends Phaser.Scene {
     if(!target || distance(ship,target)>MINE_RANGE)return;
     const mined=extractOre(this.state,ship,target,dt*ship.miningRate);
     if(mined>0){
-      this.beam.lineStyle(8,0x7bbae8,.15);
-      this.beam.lineBetween(ship.x,ship.y,target.x,target.y);
-      this.beam.lineStyle(2,0xeaf7ff,.9);
-      this.beam.lineBetween(ship.x,ship.y,target.x,target.y);
+      this.miningEffects.fire(ship,target,mined);
     }
   }
 
@@ -584,7 +581,7 @@ export class FlightScene extends Phaser.Scene {
   }
   setControlsBlocked(blocked:boolean):void {
     this.controlsBlocked=blocked;
-    if(blocked&&this.beam)this.beam.clear();
+    if(blocked)this.miningEffects?.clear();
   }
 
   /** User may open the visual cutaway at any time when docked. */
@@ -658,6 +655,7 @@ export class FlightScene extends Phaser.Scene {
       this.cameraAnchor.setPosition(ship.x,ship.y);
     }
     this.refreshViews();
+    this.miningEffects.update(delta/1000);
     this.timeToUpdateUI+=delta/1000;
     this.timeToSave+=elapsed;
     if(this.timeToUpdateUI>=.15){
