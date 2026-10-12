@@ -75,8 +75,13 @@ export function berthWorldPosition(ship: Ship): Point {
  */
 export function reconcileBerths(state: GameState): void {
   const docked = state.ships.filter((ship) => ship.docked);
+  const saved = new Map(docked.map((ship) => [ship.id, ship.berth]));
+  // Preserve old parking spots wherever possible instead of reshuffling
+  // everyone whenever a second ship docks or the player reloads.
+  docked.sort((a, b) => (a.berth ?? Infinity) - (b.berth ?? Infinity));
   for (const ship of docked) ship.berth = undefined;
   for (const ship of docked) {
+    ship.berth = saved.get(ship.id);
     const slot = findAvailableBerth(state, ship);
     if (slot === null) {
       // Legacy saves with too many docked ships are placed safely outside.
