@@ -32,7 +32,7 @@ export function launchShip(ship: Ship): boolean {
   ship.berth = undefined;
   ship.x = MOTHERSHIP.departure.x;
   ship.y = MOTHERSHIP.departure.y;
-  ship.angle = 0;
+  ship.angle = -Math.PI / 2;
   return true;
 }
 
