@@ -1,4 +1,5 @@
 import { HOME } from './model';
+import { SHIP_ZONES } from './arrowGeometry';
 import type { GameState, Point, Ship } from './model';
 
 /**
@@ -6,12 +7,13 @@ import type { GameState, Point, Ship } from './model';
  * The mothership is intentionally ~20 times longer than a starter scout.
  */
 export const MOTHERSHIP = {
-  halfWidth: 570,
-  halfHeight: 350,
-  entrance: { x: HOME.x + 120, y: HOME.y - 354 },
-  approach: { x: HOME.x + 120, y: HOME.y - 535 },
-  departure: { x: HOME.x + 120, y: HOME.y - 750 },
-  hangar: { x: -270, y: -185, width: 550, height: 370 },
+  halfWidth: 585,
+  halfHeight: 442,
+  /** The upper SIDE hangar is physically mounted to the broad shoulder. */
+  entrance: { x: HOME.x + SHIP_ZONES.airlock.x, y: HOME.y + SHIP_ZONES.airlock.y },
+  approach: { x: HOME.x + SHIP_ZONES.airlock.x, y: HOME.y - 555 },
+  departure: { x: HOME.x + SHIP_ZONES.airlock.x, y: HOME.y - 830 },
+  hangar: { x: -283, y: -187, width: 567, height: 375 },
 } as const;
 
 /** Hangar slots are contiguous parking units. Wide ships occupy neighboring slots. */
