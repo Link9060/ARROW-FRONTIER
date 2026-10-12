@@ -229,7 +229,7 @@ export function runAutomation(state:GameState,seconds:number):void {
       if(storedTotal(state.stored)>=state.storageCapacity-.001)continue;
       if(!state.asteroids.some(asteroid=>asteroid.remaining>0))continue;
       if((ship.turnaround??0)>0){
-        ship.turnaround=Math.max(0,ship.turnaround-seconds);
+        ship.turnaround=Math.max(0,(ship.turnaround??0)-seconds);
         continue;
       }
       if(beginFleetLaunch(ship))ship.turnaround=0;
