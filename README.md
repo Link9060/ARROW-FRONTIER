@@ -1,13 +1,25 @@
 # ARROW: FRONTIER
 > **A persistent 2D space exploration, mining, fleet automation, economy, and civilization-building game within Project ARROW.**
 
-**Status:** Playable browser prototype v0.2; major planned features remain unimplemented  
+**Status:** Playable browser prototype v0.6 (first physical-mothership slice); major planned features remain unimplemented  
 **Document:** Master game design README, version 0.1  
 **Parent ecosystem:** Project ARROW / Resonant Assist  
 **Game:** ARROW: FRONTIER (AF)  
 **Core experience:** Build a mobile civilization, pilot ships manually, automate fleets with game-native RAVIN logic, explore and trade across star systems, and optionally enter a shared multiplayer multiverse.
 
 > This README is a **design specification**, not a statement that these systems are already implemented. Sections distinguish **agreed direction**, **proposed implementation**, and **open decisions**. Numbers and sample names are placeholders for balancing.
+
+## v0.6 · Living Mothership (First Implementation Slice)
+
+This version replaces improvised spacecraft with geometry **sourced from the real Project ARROW symbol**, shared between the enormous mothership, scout and industrial miner. The flagship has permanent forward command and rear propulsion areas, structural trusses, a physical upper-side hangar, bay rails, and a two-leaf door that opens for side arrivals and closes after launch.
+
+Docking is guided through outer-space alignment arcs and a **visible tractor beam**. Travel duration comes from distance and speed rather than teleport-like fixed timers. The final ship position matches its reserved physical berth, and hangar expansions grow real side-pod geometry and relocate the airlock.
+
+Mining uses traveling beam ignition and shutdown, a pulsing extraction core, asteroid impact particles and larger/smaller breakaway fragments. The background now uses subtle nebula haze and layered monochrome starfields instead of a heavy grid. Manual flight respects the hull collider. A Chromium browser test gate checks launch, approach, docking and mobile navigation.
+
+**Still planned:** Full fixed-zone room migration, physically larger custom room upgrades, simultaneous fleet docking traffic, animated clamps, and sound. These are not included in the first v0.6 slice.
+
+See the [Living Mothership blueprint](docs/FRONTIER-V0.6-BLUEPRINT.md).
 
 ## v0.5 · Minimal ARROW UI Reset
 
