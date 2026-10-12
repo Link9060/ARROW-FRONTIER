@@ -1,10 +1,10 @@
 import Phaser from 'phaser';
 import type { GameState, Room } from '../sim/model';
 import { HOME, ROOM_GRID } from '../sim/model';
-import { berthLocalPosition, hangarCapacity, MAX_BERTHS } from '../sim/hangar';
+import { berthLocalPosition, dockingPort, hangarCapacity, MAX_BERTHS } from '../sim/hangar';
 import { MODULES, powerReport } from '../sim/mothership';
 import { CELL_SIZE, deckCellPoint } from './deckLayout';
-import { arrowOutline, FLAGSHIP_LENGTH, SHIP_ZONES } from '../sim/arrowGeometry';
+import { arrowOutline, FLAGSHIP_LENGTH } from '../sim/arrowGeometry';
 
 export interface MothershipArtwork {
   roof:Phaser.GameObjects.Container;
@@ -138,7 +138,8 @@ export function buildMothershipArtwork(scene:Phaser.Scene,state:GameState,
   label(scene,interior,50,floorBottom+24,'HANGAR / DOCKING',11,'#d3d3d3');
 
   // Physical side access: door housing, passage and a tractor emitter.
-  const doorY=SHIP_ZONES.airlock.y;
+  const port=dockingPort(state);
+  const doorY=port.entrance.y-homeY;
   structural.fillStyle(0x272729,1);
   structural.lineStyle(2.2,0xe3e3e3,.87);
   structural.fillRoundedRect(-174,doorY-13,116,41,7);
@@ -148,7 +149,7 @@ export function buildMothershipArtwork(scene:Phaser.Scene,state:GameState,
   structural.lineStyle(2,0xa1a1a1,.5);
   structural.lineBetween(-114,doorY+29,-114,floorTop+4);
   structural.fillStyle(0xf4f4f4,.83);
-  structural.fillCircle(SHIP_ZONES.tractor.x,SHIP_ZONES.tractor.y,7);
+  structural.fillCircle(port.tractor.x-homeX,port.tractor.y-homeY,7);
   label(scene,interior,-114,doorY-36,'AIRLOCK A',10,'#e1e1e1');
 
   // Existing room ids/coordinates remain the same; each renderer uses the
