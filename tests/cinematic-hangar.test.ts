@@ -115,10 +115,12 @@ describe('legacy coordinate and parking migration', () => {
       ship.y -= 700;
       delete ship.berth;
     }
-    for (const asteroid of legacy.asteroids) {
-      asteroid.x -= 900;
-      asteroid.y -= 700;
-    }
+    legacy.asteroids.forEach((asteroid, i) => {
+      const angle = i * 2.399963229728653;
+      const radius = 315 + ((i * 91) % 510);
+      asteroid.x = 1300 + Math.cos(angle) * radius;
+      asteroid.y = 900 + Math.sin(angle) * radius;
+    });
     expect(saveGame(legacy,1000)).toBe(true);
     const { state, recovered }=loadGame(1000);
     expect(recovered).toBe(true);
