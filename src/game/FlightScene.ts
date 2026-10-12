@@ -1,7 +1,6 @@
 import Phaser from 'phaser';
-import { activeShip, dockShip, extractOre, launchShip, nearestDeposit, runAutomation, switchShip } from '../sim/engine';
-import { distance, HOME, MINE_RANGE, WORLD } from '../sim/model';
-import { MODULES, powerReport } from '../sim/mothership';
+import { activeShip, advanceActiveSimulation, dockShip, extractOre, launchShip, nearestDeposit, switchShip } from '../sim/engine';
+import { distance, DOCK_RADIUS, HOME, MINE_RANGE, WORLD } from '../sim/model';
 import type { Asteroid, GameState, Ship } from '../sim/model';
 
 export class FlightScene extends Phaser.Scene {
@@ -12,6 +11,7 @@ export class FlightScene extends Phaser.Scene {
   private mothershipView?: Phaser.GameObjects.Container;
   private dockRingDrawn = false;
   private controlsBlocked = false;
+  private cameraAnchor!: Phaser.GameObjects.Zone;
   private overlay!: Phaser.GameObjects.Graphics;
   private state: GameState;
   private onStateChange: () => void;
@@ -31,6 +31,7 @@ export class FlightScene extends Phaser.Scene {
   create(): void {
     this.cameras.main.setBackgroundColor('#05070b');
     this.cameras.main.setBounds(0, 0, WORLD.width, WORLD.height);
+    this.cameras.main.setZoom(window.innerWidth < 720 ? 1.05 : window.innerWidth < 1100 ? 1.18 : 1.34);
     this.drawBackground();
     this.drawMothership();
 
@@ -46,8 +47,9 @@ export class FlightScene extends Phaser.Scene {
     this.overlay = this.add.graphics().setDepth(5);
     this.keys = this.input.keyboard!.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT,SPACE,E,Q') as Record<string, Phaser.Input.Keyboard.Key>;
 
-    const active = this.shipViews.get(this.state.activeShipId);
-    if (active) this.cameras.main.startFollow(active, true, 0.08, 0.08);
+    this.cameraAnchor = this.add.zone(HOME.x, HOME.y, 1, 1).setVisible(false);
+    this.cameras.main.startFollow(this.cameraAnchor, true, 0.085, 0.085);
+    this.cameras.main.centerOn(HOME.x, HOME.y);
 
     this.onStateChange();
     this.announce('COMMAND LINK ESTABLISHED · PRESS E TO LAUNCH');
@@ -84,68 +86,91 @@ export class FlightScene extends Phaser.Scene {
     }).setDepth(-1);
   }
 
-  /** Rebuild the in-world mothership whenever its room layout changes. */
+  /**
+   * Opaque ARROW silhouette. Internal rooms are NEVER rendered in space.
+   * The construction grid is accessible only while docked in interior mode.
+   */
   drawMothership(): void {
     this.mothershipView?.destroy(true);
-    const ship = this.add.container(HOME.x, HOME.y).setDepth(4);
-    this.mothershipView = ship;
-    const shape = this.add.graphics();
-    shape.lineStyle(2, 0xb6c5d8, 0.8);
-    shape.fillStyle(0x101b29, 1);
-    shape.fillRoundedRect(-151, -89, 302, 178, 14);
-    shape.strokeRoundedRect(-151, -89, 302, 178, 14);
-    shape.lineStyle(1, 0x536e89, 0.29);
-    shape.fillStyle(0x152638, 0.8);
-    shape.fillRoundedRect(-165, -43, 22, 86, 7);
-    shape.strokeRoundedRect(-165, -43, 22, 86, 7);
-    shape.lineStyle(2, 0xe6effb, 0.65);
-    shape.lineBetween(151, -37, 171, -18);
-    shape.lineBetween(151, 37, 171, 18);
-    shape.lineBetween(171, -18, 171, 18);
-    shape.fillStyle(0x96bce4, 0.2);
-    shape.fillCircle(-171, 0, 19);
-    shape.fillStyle(0xe2f2ff, 0.75);
-    shape.fillCircle(-171, 0, 7);
-    ship.add(shape);
+    const vessel = this.add.container(HOME.x, HOME.y).setDepth(8);
+    this.mothershipView = vessel;
+    const hull = this.add.graphics();
+    vessel.add(hull);
 
-    const online = powerReport(this.state).onlineIds;
-    for (const room of this.state.rooms) {
-      const rx = -136 + room.x * 45;
-      const ry = -77 + room.y * 38;
-      const powered = online.has(room.id);
-      const compartment = this.add.graphics();
-      compartment.fillStyle(powered ? 0x1d364a : 0x111922, 1);
-      compartment.lineStyle(1, powered ? 0xabc8df : 0x5e7083, powered ? 0.65 : 0.27);
-      compartment.fillRoundedRect(rx, ry, 43, 35, 4);
-      compartment.strokeRoundedRect(rx, ry, 43, 35, 4);
-      if (room.type === 'reactor' && powered) {
-        compartment.fillStyle(0xd4eaff, 0.36);
-        compartment.fillCircle(rx + 21, ry + 10, 7 + (room.level - 1) * 1.5);
-      }
-      if (room.type === 'refinery' && powered) {
-        compartment.fillStyle(0xb6d2eb, 0.4);
-        compartment.fillRoundedRect(rx + 8, ry + 6, 27, 8, 2);
-      }
-      ship.add(compartment);
-      const code = this.add.text(rx + 21.5, ry + 21, MODULES[room.type].code, {
-        fontFamily: 'monospace', fontSize: '8px', color: powered ? '#f2f7ff' : '#5b7086',
-      }).setOrigin(0.5);
-      ship.add(code);
-      if (room.level > 1) ship.add(this.add.text(rx + 36, ry + 2, String(room.level), {
-        fontFamily: 'monospace', fontSize: '8px', color: '#d6e9ff',
-      }));
+    // Exterior: sharpened prow, broad delta wings and a recessed stern.
+    const perimeter: [number, number][] = [
+      [-228, -71], [-144, -71], [-64, -114], [18, -114],
+      [120, -58], [242, 0], [120, 58], [18, 114],
+      [-64, 114], [-144, 71], [-228, 71], [-146, 0],
+    ];
+    const drawPath = (points: [number, number][], fill: number, line: number, alpha = 1): void => {
+      hull.fillStyle(fill, alpha);
+      hull.lineStyle(2, line, 0.9);
+      hull.beginPath();
+      points.forEach(([x, y], index) => { if (index === 0) hull.moveTo(x, y); else hull.lineTo(x, y); });
+      hull.closePath();
+      hull.fillPath();
+      hull.strokePath();
+    };
+    // Outer armor completely blocks views of individual internal modules.
+    drawPath(perimeter, 0x101d2a, 0xb9cde0);
+    drawPath(
+      [[-112, -49], [-42, -87], [32, -87], [154, -25], [201, 0],
+       [154, 25], [32, 87], [-42, 87], [-112, 49], [-76, 0]],
+      0x1d3043, 0x527592,
+    );
+    drawPath([[12, -29], [93, -29], [166, 0], [93, 29], [12, 29], [56, 0]], 0x07111d, 0x9bbbd8);
+    hull.lineStyle(2, 0xe0efff, 0.85);
+    hull.lineBetween(-71, -92, 100, 0);
+    hull.lineBetween(-71, 92, 100, 0);
+    hull.lineStyle(2, 0x8daeca, 0.85);
+    hull.lineBetween(-183, -53, -77, -53);
+    hull.lineBetween(-183, 53, -77, 53);
+    hull.lineStyle(1, 0x9ab6ce, 0.45);
+    hull.lineBetween(-119, 0, -34, 0);
+    hull.lineBetween(100, 0, 198, 0);
+    // Engine pods and exhaust.
+    for (const y of [-54, 54]) {
+      hull.fillStyle(0x122b41, 1);
+      hull.fillRoundedRect(-235, y - 13, 44, 26, 5);
+      hull.lineStyle(1.5, 0x789fc1, 0.85);
+      hull.strokeRoundedRect(-235, y - 13, 44, 26, 5);
+      hull.fillStyle(0xd3e9ff, 0.8);
+      hull.fillRoundedRect(-239, y - 8, 7, 16, 3);
+      hull.fillStyle(0x7cb0e4, 0.12);
+      hull.fillEllipse(-261, y, 43, 21);
     }
-    ship.add(this.add.text(-135, 98, 'ARROW-01 / MODULAR MOTHERSHIP', {
-      fontFamily: 'monospace', fontSize: '11px', color: '#f0f6ff', letterSpacing: 1,
-    }));
+    // External expansion plating, without exposing room plans.
+    const extras = Math.max(0, this.state.rooms.length - 4);
+    if (extras) {
+      const plates = Math.min(4, Math.ceil(extras / 3));
+      for (let i = 0; i < plates; i++) {
+        const x = -78 + i * 29;
+        hull.lineStyle(2, 0x759bbf, 0.65);
+        hull.lineBetween(x, -102, x + 22, -105);
+        hull.lineBetween(x, 102, x + 22, 105);
+      }
+    }
+
+    const callsign = this.add.text(-108, 134, 'A R R O W   /   M O T H E R S H I P', {
+      fontFamily: 'monospace', fontSize: '12px', color: '#c6dff5', letterSpacing: 1,
+    }).setOrigin(0, 0);
+    vessel.add(callsign);
+
     if (!this.dockRingDrawn) {
-      const dock = this.add.graphics().setDepth(2);
-      dock.lineStyle(1, 0xc5d4e8, 0.22);
-      dock.strokeCircle(HOME.x, HOME.y, 190);
-      dock.lineStyle(1, 0x9cb4cc, 0.12);
-      dock.strokeCircle(HOME.x, HOME.y, 208);
-      this.add.text(HOME.x + 177, HOME.y - 98, 'DOCKING RADIUS', {
-        fontFamily: 'monospace', fontSize: '10px', color: '#627a90',
+      const ring = this.add.graphics().setDepth(2);
+      ring.lineStyle(1, 0x9cb8d4, 0.36);
+      ring.strokeCircle(HOME.x, HOME.y, DOCK_RADIUS);
+      ring.lineStyle(1, 0x68829d, 0.13);
+      ring.strokeCircle(HOME.x, HOME.y, DOCK_RADIUS + 16);
+      ring.lineStyle(2, 0xb9d1e8, 0.45);
+      for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 4) {
+        ring.beginPath();
+        ring.arc(HOME.x, HOME.y, DOCK_RADIUS, angle, angle + 0.09);
+        ring.strokePath();
+      }
+      this.add.text(HOME.x + 169, HOME.y - 235, 'DOCKING RANGE', {
+        fontFamily: 'monospace', fontSize: '11px', color: '#819ab5',
       }).setDepth(3);
       this.dockRingDrawn = true;
     }
@@ -179,7 +204,7 @@ export class FlightScene extends Phaser.Scene {
     shape.lineBetween(-r * 0.25, -r * 0.25, r * 0.4, r * 0.2);
     container.add(shape);
     const label = this.add.text(0, -r - 22, asteroid.ore.toUpperCase(), {
-      fontFamily: 'monospace', fontSize: '10px', color: '#849cb4',
+      fontFamily: 'monospace', fontSize: '12px', color: '#9eb5cb',
     }).setOrigin(0.5);
     container.add(label);
     container.setVisible(asteroid.remaining > 0);
@@ -203,8 +228,8 @@ export class FlightScene extends Phaser.Scene {
     graphics.fillTriangle(-3, -7, 11, 0, -3, 7);
     graphics.fillStyle(0x96c5ff, 0.58);
     graphics.fillTriangle(-15, -6, -28, 0, -15, 6);
-    const label = this.add.text(0, -36, ship.name, {
-      fontFamily: 'monospace', fontSize: '11px', color: '#b8c9dc',
+    const label = this.add.text(0, -41, ship.name, {
+      fontFamily: 'monospace', fontSize: '12px', color: '#b8c9dc',
     }).setOrigin(0.5).setRotation(0);
     // The label stays horizontal because it is not a child of the rotating vessel.
     view.add(graphics);
@@ -303,8 +328,8 @@ export class FlightScene extends Phaser.Scene {
 
   selectShip(id: string): void {
     if (!switchShip(this.state, id)) return;
-    const view = this.shipViews.get(id);
-    if (view) this.cameras.main.startFollow(view, true, 0.08, 0.08);
+    const ship = activeShip(this.state);
+    this.cameraAnchor.setPosition(ship.docked ? HOME.x : ship.x, ship.docked ? HOME.y : ship.y);
     this.announce('CONTROL TRANSFER · ' + activeShip(this.state).name);
     this.onStateChange();
   }
@@ -322,11 +347,15 @@ export class FlightScene extends Phaser.Scene {
       this.moveManual(dt);
       this.updateMining(dt);
     }
-    runAutomation(this.state, dt);
+    // The world clock consumes real elapsed time (in stable substeps), while
+    // manual movement uses a separate bounded input step.
+    const elapsed = advanceActiveSimulation(this.state, delta / 1000);
+    const followed = activeShip(this.state);
+    this.cameraAnchor.setPosition(followed.docked ? HOME.x : followed.x, followed.docked ? HOME.y : followed.y);
     this.refreshViews();
 
-    this.timeToUpdateUI += dt;
-    this.timeToSave += dt;
+    this.timeToUpdateUI += elapsed;
+    this.timeToSave += elapsed;
     if (this.timeToUpdateUI >= 0.12) {
       this.onStateChange();
       this.timeToUpdateUI = 0;
