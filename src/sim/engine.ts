@@ -119,7 +119,7 @@ export function runAutomation(state: GameState, seconds: number): void {
 }
 
 export function simulateOffline(state: GameState, elapsedSeconds: number): number {
-  const elapsed = Math.min(OFFLINE_CAP_SECONDS, Math.max(0, Math.floor(elapsedSeconds)));
+  const elapsed = Number.isFinite(elapsedSeconds) ? Math.min(OFFLINE_CAP_SECONDS, Math.max(0, Math.floor(elapsedSeconds))) : 0;
   for (let remaining = elapsed; remaining > 0;) {
     const step = Math.min(2, remaining);
     runAutomation(state, step);
