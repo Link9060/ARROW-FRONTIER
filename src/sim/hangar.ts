@@ -11,7 +11,7 @@ export const MOTHERSHIP = {
   halfHeight: 442,
   /** The upper SIDE hangar is physically mounted to the broad shoulder. */
   entrance: { x: HOME.x + SHIP_ZONES.airlock.x, y: HOME.y + SHIP_ZONES.airlock.y },
-  approach: { x: HOME.x + SHIP_ZONES.airlock.x, y: HOME.y - 555 },
+  approach: { x: HOME.x + SHIP_ZONES.airlock.x, y: HOME.y - 502 },
   departure: { x: HOME.x + SHIP_ZONES.airlock.x, y: HOME.y - 830 },
   hangar: { x: -283, y: -187, width: 567, height: 375 },
 } as const;
