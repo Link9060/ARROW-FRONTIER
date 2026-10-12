@@ -315,3 +315,14 @@ body:has(.builder-overlay:not(.hidden)) .key-hints { opacity: 0; }
 @media (prefers-reduced-motion: reduce) {
   .flight-panel, .command-overlay, .builder-overlay { transition: none; }
 }
+
+
+/* v0.3 builder layout final pass: catalog alongside the deck grid */
+.builder-secondary .room-palette { margin: 0 0 24px; }
+.builder-details-label { padding-top: 18px; border-top: 1px solid #314b63; }
+.builder-workspace .room-grid { gap: 5px; padding: 12px; }
+.builder-workspace .module-cell { aspect-ratio: 1.45; }
+.builder-workspace .builder-legend { margin-bottom: 8px; }
+@media (max-width: 900px) {
+ .builder-secondary .room-palette { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
