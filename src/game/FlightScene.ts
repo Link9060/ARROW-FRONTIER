@@ -30,6 +30,7 @@ export class FlightScene extends Phaser.Scene {
   private rangeIndicator!: Phaser.GameObjects.Graphics;
   private tractorBeam!: Phaser.GameObjects.Graphics;
   private tractorPhase = 0;
+  private enginePhase = 0;
   private controlsBlocked = true;
   private virtualMove = {x:0,y:0};
   private virtualMining = false;
@@ -359,6 +360,12 @@ export class FlightScene extends Phaser.Scene {
       g.fillCircle(-size.length*.13,size.length*.21,3);
     }
     view.add(g);
+    // Small aft nozzles are world objects, not HUD effects. Their subtle
+    // exhaust scales with actual movement and fades while parked.
+    const exhaust=this.add.graphics();
+    view.addAt(exhaust,0);
+    view.setData('exhaust',exhaust);
+    view.setData('hullLength',size.length);
     const label = this.add.text(ship.x,ship.y-51,ship.name,{
       fontFamily:'Inter, sans-serif',fontSize:'12px',color:'#d8d8da',
     }).setOrigin(.5).setDepth(20);
@@ -375,6 +382,25 @@ export class FlightScene extends Phaser.Scene {
       view.setVisible(visible);
       view.setPosition(ship.x,ship.y);
       view.setRotation(ship.angle);
+      const exhaust=view.getData('exhaust') as Phaser.GameObjects.Graphics;
+      const hullLength=view.getData('hullLength') as number;
+      exhaust.clear();
+      const speed=this.velocity.get(ship.id);
+      const moving=speed ? Math.hypot(speed.x,speed.y)/ship.speed : 0;
+      const thrust=ship.docked ? 0 :
+        this.mode==='transition' ? .72 :
+        ship.mode==='auto' ? .46 : Math.min(.85,moving);
+      if(thrust>.08){
+        const shimmer=Math.sin(this.enginePhase*11+ship.x*.04)*1.6;
+        const start=-hullLength*.31;
+        const end=start-hullLength*(.15+.18*thrust)-shimmer;
+        exhaust.lineStyle(5,0xf1f1f2,thrust*.11);
+        exhaust.lineBetween(start,0,end,0);
+        exhaust.lineStyle(1.4,0xfafafa,thrust*.68);
+        exhaust.lineBetween(start,0,end+3,0);
+        exhaust.fillStyle(0xffffff,.5*thrust);
+        exhaust.fillCircle(start,0,1.8);
+      }
       const label=view.getData('label') as Phaser.GameObjects.Text;
       label.setPosition(ship.x,ship.y-43);
       // Flight already has an active-ship HUD. Hide duplicate active labels
@@ -774,6 +800,7 @@ export class FlightScene extends Phaser.Scene {
       const ship=activeShip(this.state);
       this.cameraAnchor.setPosition(ship.x,ship.y);
     }
+    this.enginePhase+=Math.min(.08,Math.max(0,delta/1000));
     this.refreshViews();
     this.miningEffects.update(delta/1000);
     this.atmosphere.update(delta/1000,this.state,this.art?.roof.alpha ?? 1);
