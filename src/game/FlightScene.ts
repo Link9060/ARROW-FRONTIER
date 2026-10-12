@@ -11,6 +11,7 @@ import type { DockWaypoint } from '../sim/dockingRoute';
 import { buildMothershipArtwork } from './MothershipArt';
 import type { MothershipArtwork } from './MothershipArt';
 import { locateDeckCell } from './deckLayout';
+import { resolveHullMovement } from '../sim/hullCollision';
 import { MiningEffects } from './MiningEffects';
 import type { Asteroid, GameState, Point, Ship } from '../sim/model';
 
@@ -379,8 +380,13 @@ export class FlightScene extends Phaser.Scene {
     v.x*=drag;v.y*=drag;
     const speed=Math.hypot(v.x,v.y);
     if(speed>ship.speed){v.x*=ship.speed/speed;v.y*=ship.speed/speed;}
-    ship.x=Phaser.Math.Clamp(ship.x+v.x*dt,35,WORLD.width-35);
-    ship.y=Phaser.Math.Clamp(ship.y+v.y*dt,35,WORLD.height-35);
+    const resolved=resolveHullMovement(ship,{
+      x:Phaser.Math.Clamp(ship.x+v.x*dt,35,WORLD.width-35),
+      y:Phaser.Math.Clamp(ship.y+v.y*dt,35,WORLD.height-35),
+    },this.state);
+    if(Math.abs(resolved.x-ship.x)<.001)v.x=0;
+    if(Math.abs(resolved.y-ship.y)<.001)v.y=0;
+    ship.x=resolved.x;ship.y=resolved.y;
     this.velocity.set(ship.id,v);
     const pointer=this.input.activePointer;
     if(this.virtualMove.x||this.virtualMove.y){
