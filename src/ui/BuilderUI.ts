@@ -4,8 +4,9 @@ import {
   shipUpgradeCost, toggleRoom, upgradeCost, upgradeRoom, upgradeShip,
   buildRoom, roomOnline,
 } from '../sim/mothership';
-import { ROOM_GRID, storedTotal } from '../sim/model';
-import type { GameState, Room, RoomType, Resources, ShipUpgrade } from '../sim/model';
+import { ROOM_GRID } from '../sim/model';
+import type { GameState, RoomType, Resources } from '../sim/model';
+import type { ShipUpgrade } from '../sim/mothership';
 
 type MutationCallback = () => void;
 const get = <T extends HTMLElement = HTMLElement>(id: string): T => {
