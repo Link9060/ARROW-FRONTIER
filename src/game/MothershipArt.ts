@@ -32,42 +32,45 @@ function label(scene:Phaser.Scene,container:Phaser.GameObjects.Container,
     color,align:'center',
   }).setOrigin(.5));
 }
+/**
+ * Physical machinery recessed into the ship floor. The old floating cards
+ * and multi-line labels are deliberately gone: Build mode is the inspector.
+ */
 function moduleTile(scene:Phaser.Scene,parent:Phaser.GameObjects.Container,
-  room:Room,online:boolean):void{
-  const {x,y}=deckCellPoint(room.x,room.y);
+  room:Room,online:boolean):void {
+  const point=deckCellPoint(room.x,room.y);
+  const {x,y}=point;
+  const w=CELL_SIZE.width-5,h=CELL_SIZE.height-2;
   const g=scene.add.graphics();parent.add(g);
-  const w=CELL_SIZE.width-6,h=CELL_SIZE.height-7;
-  g.fillStyle(online?0x272729:0x19191a,1);
-  g.lineStyle(online?1.8:1,online?0xbebec0:0x555558,online?.95:.6);
-  g.fillRoundedRect(x-w/2,y-h/2,w,h,6);
-  g.strokeRoundedRect(x-w/2,y-h/2,w,h,6);
-  g.lineStyle(1,0x7a7a7c,.4);
-  g.lineBetween(x-w/2+12,y+4,x+w/2-12,y+4);
-  // Distinct interior equipment is drawn without sci-fi glowing outlines.
-  if(room.type==='reactor'){
-    g.lineStyle(1.8,0xe0e0e0,.7);
-    g.strokeCircle(x-37,y-10,12);
-    g.lineBetween(x-37,y-22,x-37,y+2);
-    g.lineBetween(x-49,y-10,x-25,y-10);
-  }else if(room.type==='storage'){
-    for(let i=0;i<3;i++){
-      g.lineStyle(1,0xbdbdbd,.65);
-      g.strokeRoundedRect(x-51+i*19,y-18,14,17,2);
+  g.fillStyle(online?0x232326:0x161618,1);
+  g.fillRect(x-w/2,y-h/2,w,h);
+  g.lineStyle(1,online?0x67676d:0x3f3f44,.82);
+  g.strokeRect(x-w/2,y-h/2,w,h);
+  g.fillStyle(online?0xd8d8da:0x56565a,.6);
+  g.fillRect(x-w/2,y-h/2,3,h);
+  g.lineStyle(1,0xaaaab0,.5);
+  const kind=room.type;
+  if(kind==='storage'){
+    for(let j=0;j<3;j++){
+      g.strokeRect(x-w/2+9+j*9,y-5,6,9);
     }
-  }else if(room.type==='command'){
-    g.lineStyle(1,0xd9d9da,.65);
-    g.strokeRoundedRect(x-52,y-18,51,18,4);
-    g.lineBetween(x-37,y-18,x-37,y-1);
-  }else if(room.type==='refinery'){
-    g.lineStyle(2,0xbcbcbc,.7);
-    g.lineBetween(x-47,y-17,x-14,y-17);
-    g.lineBetween(x-47,y-12,x-14,y-12);
+  }else if(kind==='refinery'){
+    g.lineBetween(x-w/2+9,y-4,x-w/2+33,y-4);
+    g.lineBetween(x-w/2+12,y,x-w/2+30,y);
+    g.fillCircle(x-w/2+22,y+5,2);
+  }else if(kind==='reactor'){
+    g.strokeCircle(x-w/2+22,y,6);
+    g.fillCircle(x-w/2+22,y,2);
+  }else if(kind==='fabricator'){
+    g.lineBetween(x-w/2+9,y+5,x-w/2+19,y-5);
+    g.lineBetween(x-w/2+19,y-5,x-w/2+30,y+1);
   }else{
-    g.lineStyle(1,0xc4c4c5,.65);
-    g.strokeRoundedRect(x-51,y-18,37,18,3);
+    g.lineBetween(x-w/2+9,y-5,x-w/2+28,y-5);
+    g.lineBetween(x-w/2+9,y+5,x-w/2+28,y+5);
   }
-  label(scene,parent,x+26,y-9,MODULES[room.type].code,11,online?'#e6e6e6':'#858585');
-  label(scene,parent,x,y+17,MODULES[room.type].title.toUpperCase()+'  '+room.level,8,online?'#b2b2b3':'#737376');
+  // Single restrained engraving instead of a separate UI-like room card.
+  label(scene,parent,x+19,y,MODULES[kind].code+' '+room.level,9,
+    online?'#c6c6c8':'#77777c');
 }
 
 export function buildMothershipArtwork(scene:Phaser.Scene,state:GameState,
@@ -89,6 +92,30 @@ export function buildMothershipArtwork(scene:Phaser.Scene,state:GameState,
     structural.lineBetween(x,y-18,x+22,y+18);
     structural.lineBetween(x,-y+18,x+22,-y-18);
   }
+
+  // The engineering deck is a manufactured lower wing, following the
+  // spearhead taper. It provides a single shared FLOOR for custom modules.
+  // No individual room should appear suspended in outer space.
+  path(structural,[
+    [-315,36],[280,36],[252,118],[205,163],[122,205],
+    [-18,259],[-305,278],[-337,182],
+  ],0x151518,0x6f6f75,1.35);
+  const floor=scene.add.graphics();interior.add(floor);
+  floor.lineStyle(1,0x8a8a90,.16);
+  for(let xx=-290;xx<230;xx+=33){
+    floor.lineBetween(xx,48,xx,230-Math.max(0,xx)*.42);
+  }
+  // A subtle continuous access gantry makes the modules part of one system.
+  floor.lineStyle(3,0x9b9ba0,.44);
+  floor.lineBetween(-260,46,246,46);
+  floor.lineStyle(1,0xbabac0,.22);
+  floor.lineBetween(-252,40,243,40);
+  for(let j=0;j<9;j++){
+    const xx=-235+j*56;
+    floor.fillStyle(0xb9b9bf,.26);
+    floor.fillRoundedRect(xx,43,15,4,2);
+  }
+  label(scene,interior,-226,258,'ENGINEERING DECK',11,'#85858b');
 
   // The official mark's hollowed rear splits into two engine assemblies.
   for(const side of [-1,1]){
@@ -113,6 +140,22 @@ export function buildMothershipArtwork(scene:Phaser.Scene,state:GameState,
   structural.lineBetween(310,-23,385,-23);
   structural.lineBetween(310,-9,385,-9);
   label(scene,interior,348,22,'COMMAND',10,'#dedee0');
+
+  // A dedicated fusion room is not one more floating Build-grid card.
+  const reactor=scene.add.graphics();interior.add(reactor);
+  reactor.fillStyle(0x222227,1);
+  reactor.lineStyle(2,0x9a9aa1,.66);
+  reactor.fillRoundedRect(-379,65,86,105,10);
+  reactor.strokeRoundedRect(-379,65,86,105,10);
+  reactor.lineStyle(2,0xe5e5e7,.64);
+  reactor.strokeCircle(-335,112,24);
+  reactor.strokeCircle(-335,112,16);
+  reactor.fillStyle(0xeeeeef,.7);
+  reactor.fillCircle(-335,112,5);
+  reactor.lineStyle(1,0xaaaab0,.37);
+  reactor.lineBetween(-335,88,-335,136);
+  reactor.lineBetween(-359,112,-311,112);
+  label(scene,interior,-335,155,'POWER CORE',9,'#b5b5b8');
 
   // Clear central utility spine connects the bridge and both hangar shoulders.
   structural.fillStyle(0x141416,1);
@@ -198,13 +241,10 @@ export function buildMothershipArtwork(scene:Phaser.Scene,state:GameState,
       }
     }
   }
-  // Permanent bridge, first reactor and installed hangar have full-sized
-  // physical facilities above. Never overlay second tiny "rooms" over them.
+  // Every built module is drawn at its actual click-selectable floor slot.
+  // Command/engines/hangar and starter reactor live in dedicated facilities.
   for(const room of state.rooms){
     if(room.type==='command'||room.type==='hangar'||room.id==='room-2')continue;
-    const p=deckCellPoint(room.x,room.y);
-    structural.lineStyle(1.6,0x8b8b8d,.53);
-    structural.lineBetween(p.x,p.y,p.x,Math.sign(p.y)*58);
     moduleTile(scene,interior,room,online.has(room.id));
   }
 
