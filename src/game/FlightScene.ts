@@ -368,90 +368,163 @@ export class FlightScene extends Phaser.Scene {
   }
 
   /** Smoothly move a ship and camera through a single cinematic sequence. */
-  private animateShip(ship:Ship, end:Point, duration:number, endZoom:number,
+  /** A subtle physical tether originates from the shoulder's tractor emitter. */
+  private drawTractor(ship:Ship, progress:number):void {
+    this.tractorBeam.clear();
+    const sx=HOME.x+SHIP_ZONES.tractor.x;
+    const sy=HOME.y+SHIP_ZONES.tractor.y;
+    const dx=ship.x-sx,dy=ship.y-sy,dist=Math.hypot(dx,dy);
+    if(dist<6)return;
+    const ux=dx/dist,uy=dy/dist,px=-uy,py=ux;
+    const grow=Math.min(1,progress*3.5);
+    const endX=sx+dx*grow,endY=sy+dy*grow;
+    const width=8+Math.sin(this.tractorPhase*4)*1.5;
+    this.tractorBeam.fillStyle(0xeaeaea,.075);
+    this.tractorBeam.fillTriangle(
+      sx+px*width*2,sy+py*width*2,
+      sx-px*width*2,sy-py*width*2,
+      endX,endY,
+    );
+    this.tractorBeam.lineStyle(2.2,0xffffff,.58);
+    this.tractorBeam.lineBetween(sx,sy,endX,endY);
+    this.tractorBeam.lineStyle(.9,0xe3e3e3,.68);
+    this.tractorBeam.lineBetween(sx+px*4,sy+py*4,endX,endY);
+    this.tractorBeam.lineBetween(sx-px*4,sy-py*4,endX,endY);
+    // An energy pulse travels along the tether, not a static light stick.
+    const p=(this.tractorPhase*1.5)%1;
+    this.tractorBeam.fillStyle(0xffffff,.55);
+    this.tractorBeam.fillCircle(sx+dx*p,sy+dy*p,3.2);
+    this.tractorBeam.lineStyle(1,0xffffff,.3);
+    this.tractorBeam.strokeCircle(endX,endY,7+2*Math.sin(this.tractorPhase*5));
+  }
+
+  /**
+   * Fly each segment with speed derived from distance. Align the nose to the
+   * direction of travel instead of teleporting or forcing the same heading.
+   * Travel never moves through the opaque central hull.
+   */
+  private flyRoute(ship:Ship, waypoints:DockWaypoint[], leaving:boolean,
       onComplete:()=>void):void {
-    const camera=this.cameras.main;
-    const from={x:ship.x,y:ship.y,zoom:camera.zoom,scrollX:camera.scrollX,scrollY:camera.scrollY};
-    const tween=this.tweens.addCounter({
-      from:0,to:1,duration,ease:'Sine.InOut',
-      onUpdate:(t)=>{
-        const progress=t.getValue() ?? 0;
-        ship.x=Phaser.Math.Linear(from.x,end.x,progress);
-        ship.y=Phaser.Math.Linear(from.y,end.y,progress);
-        ship.angle=-Math.PI/2;
-        camera.setZoom(Phaser.Math.Linear(from.zoom,endZoom,progress));
-        const viewX=Phaser.Math.Linear(from.x,end.x,progress);
-        const viewY=Phaser.Math.Linear(from.y,end.y,progress);
-        camera.centerOn(viewX,viewY);
-      },
-      onComplete,
-    });
-    void tween;
+    let index=0,previousStage='';
+    const next=():void=>{
+      if(index>=waypoints.length){
+        this.tractorBeam.clear();
+        onComplete();
+        return;
+      }
+      const destination=waypoints[index++];
+      if(destination.stage!==previousStage){
+        previousStage=destination.stage;
+        if(!leaving&&destination.stage==='tractor'){
+          this.announce('TRACTOR LOCK · GUIDING FINAL APPROACH');
+        }
+        if(!leaving&&destination.stage==='taxi'){
+          if(this.art){
+            this.tweens.add({targets:this.art.roof,alpha:0,duration:900,ease:'Sine.InOut'});
+            this.tweens.add({targets:this.art.interior,alpha:1,duration:900,ease:'Sine.InOut'});
+          }
+        }
+        if(leaving&&destination.stage==='clearance'){
+          if(this.art){
+            this.tweens.add({targets:this.art.roof,alpha:1,duration:950,ease:'Sine.InOut'});
+            this.tweens.add({targets:this.art.interior,alpha:0,duration:950,ease:'Sine.InOut'});
+          }
+        }
+      }
+      const start={x:ship.x,y:ship.y,heading:ship.angle,zoom:this.cameras.main.zoom};
+      const targetHeading=destination.heading ??
+        Math.atan2(destination.point.y-start.y,destination.point.x-start.x);
+      const heading=shortestAngle(start.heading,targetHeading);
+      const duration=segmentDuration(start,destination.point,destination.speed);
+      const targetZoom=this.flightZoom()*(
+        destination.stage==='align'?.89:
+        destination.stage==='approach'?1.04:
+        destination.stage==='tractor'?1.16:
+        destination.stage==='entry'?1.23:1.12
+      );
+      this.tweens.addCounter({
+        from:0,to:1,duration,
+        ease:destination.stage==='taxi'?'Sine.InOut':'Linear',
+        onUpdate:(t)=>{
+          const p=t.getValue()??0;
+          ship.x=Phaser.Math.Linear(start.x,destination.point.x,p);
+          ship.y=Phaser.Math.Linear(start.y,destination.point.y,p);
+          ship.angle=Phaser.Math.Linear(start.heading,heading,Math.min(1,p*2.1));
+          this.cameras.main.setZoom(Phaser.Math.Linear(start.zoom,targetZoom,p));
+          this.cameras.main.centerOn(ship.x,ship.y);
+          if(inTractorStage(destination.stage)){
+            this.tractorPhase+=.022;
+            this.drawTractor(ship,p);
+          }else{
+            this.tractorBeam.clear();
+          }
+        },
+        onComplete:next,
+      });
+    };
+    next();
   }
 
   private animateCameraTo(target:Point, targetZoom:number, duration:number,
       onComplete?:()=>void):void {
     const camera=this.cameras.main;
     const start={x:camera.midPoint.x,y:camera.midPoint.y,zoom:camera.zoom};
-    // Camera.midPoint follows centerOn on every tween update.
     this.tweens.addCounter({
       from:0,to:1,duration,ease:'Sine.InOut',
       onUpdate:(t)=>{
-        const p=t.getValue() ?? 0;
+        const p=t.getValue()??0;
         camera.setZoom(Phaser.Math.Linear(start.zoom,targetZoom,p));
-        camera.centerOn(Phaser.Math.Linear(start.x,target.x,p),Phaser.Math.Linear(start.y,target.y,p));
+        camera.centerOn(
+          Phaser.Math.Linear(start.x,target.x,p),
+          Phaser.Math.Linear(start.y,target.y,p),
+        );
       },
       onComplete,
     });
   }
 
-  /** Cinematic landing: approach roof hatch, dissolve armor, taxi to unique berth. */
   private beginDocking():void {
     if(this.mode!=='flight')return;
     const ship=activeShip(this.state);
     if(ship.docked)return;
     if(distance(ship,HOME)>DOCK_RADIUS){
-      this.announce('APPROACH MOTHERSHIP BEFORE REQUESTING DOCKING');return;
+      this.announce('MOVE CLOSER TO THE MOTHERSHIP TO DOCK');return;
     }
-    const slot=findAvailableBerth(this.state,ship);
-    if(slot===null){this.announce('HANGAR FULL · EXPAND OR UPGRADE THE HANGAR');return;}
+    const berth=findAvailableBerth(this.state,ship);
+    if(berth===null){
+      this.announce('HANGAR FULL · EXPAND THE HANGAR TO DOCK');return;
+    }
+    // Read the real berth position without modifying the ship or the save.
+    const parked={...ship,berth};
+    const destination=berthWorldPosition(parked);
+    const waypoints=dockingRoute(ship,destination);
     this.cameraTouched=false;
     this.cameras.main.stopFollow();
     this.setViewMode('transition');
-    this.announce('AUTODOCK ENGAGED · ALIGNING WITH HANGAR 01');
-    this.animateShip(ship,MOTHERSHIP.approach,1100,this.flightZoom()*1.08,()=>{
-      this.animateShip(ship,MOTHERSHIP.entrance,850,this.flightZoom()*1.25,()=>{
-        if(!this.art)return;
-        this.tweens.add({targets:this.art.roof,alpha:0,duration:1050,ease:'Sine.InOut'});
-        this.tweens.add({targets:this.art.interior,alpha:1,duration:1050,ease:'Sine.InOut'});
-        const local=berthLocalPosition(slot,shipBerthSpan(ship));
-        const destination={x:HOME.x+local.x,y:HOME.y+local.y};
-        this.announce('HANGAR OPEN · BAY '+String(slot+1).padStart(2,'0')+' RESERVED');
-        this.animateShip(ship,destination,1550,this.flightZoom()*1.1,()=>{
-          const result=dockShip(this.state,ship);
-          if(result!=='docked'){
-            this.setArtworkOpacity(1);
-            this.setViewMode('flight');
-            this.refreshCameraZoom();
-            this.announce('DOCKING CANCELED · '+result.toUpperCase());
-            return;
-          }
-          ship.angle=0;
-          this.animateCameraTo(this.interiorFocus(),this.interiorZoom(),1300,()=>{
-            this.setArtworkOpacity(0);
-            this.setViewMode('interior');
-            this.cameraTouched=false;
-            this.refreshCameraZoom();
-            this.onStateChange();
-            this.saving();
-            this.announce('DOCKING COMPLETE · PARKED IN BAY '+String((ship.berth??0)+1).padStart(2,'0'));
-          });
-        });
+    this.announce('AUTOPILOT · ALIGNING WITH SIDE HANGAR');
+    this.flyRoute(ship,waypoints,false,()=>{
+      const result=dockShip(this.state,ship);
+      if(result!=='docked'){
+        this.setArtworkOpacity(1);
+        this.setViewMode('flight');
+        this.refreshCameraZoom();
+        this.announce('DOCKING CANCELLED · '+result.toUpperCase());
+        return;
+      }
+      // The destination exactly matches berthWorldPosition(). No position jump.
+      ship.angle=0;
+      this.animateCameraTo(this.interiorFocus(),this.interiorZoom(),1150,()=>{
+        this.setArtworkOpacity(0);
+        this.setViewMode('interior');
+        this.cameraTouched=false;
+        this.refreshCameraZoom();
+        this.onStateChange();
+        this.saving();
+        this.announce('PARKED · BAY '+String((ship.berth??0)+1).padStart(2,'0'));
       });
     });
   }
 
-  /** Launch is the same continuous world sequence played outward. */
   private beginLaunching():void {
     if(this.mode!=='interior')return;
     const ship=activeShip(this.state);
@@ -459,23 +532,17 @@ export class FlightScene extends Phaser.Scene {
     this.cameraTouched=false;
     this.cameras.main.stopFollow();
     this.setViewMode('transition');
-    this.announce('HANGAR DEPARTURE AUTHORIZED · OPENING AIRLOCK');
-    this.animateShip(ship,MOTHERSHIP.entrance,1500,this.flightZoom()*1.23,()=>{
-      if(this.art){
-        this.tweens.add({targets:this.art.roof,alpha:1,duration:1060,ease:'Sine.InOut'});
-        this.tweens.add({targets:this.art.interior,alpha:0,duration:1060,ease:'Sine.InOut'});
-      }
-      this.animateShip(ship,MOTHERSHIP.departure,1300,this.flightZoom(),()=>{
-        launchShip(ship);
-        this.setArtworkOpacity(1);
-        this.setViewMode('flight');
-        this.cameras.main.setZoom(this.flightZoom());
-        this.cameraAnchor.setPosition(ship.x,ship.y);
-        this.cameras.main.startFollow(this.cameraAnchor,true,.09,.09);
-        this.onStateChange();
-        this.saving();
-        this.announce('LAUNCH COMPLETE · YOU ARE CLEAR OF THE MOTHERSHIP');
-      });
+    this.announce('UNDOCKING · RELEASE CLAMPS');
+    this.flyRoute(ship,departureRoute(ship),true,()=>{
+      launchShip(ship);
+      this.setArtworkOpacity(1);
+      this.setViewMode('flight');
+      this.cameras.main.setZoom(this.flightZoom());
+      this.cameraAnchor.setPosition(ship.x,ship.y);
+      this.cameras.main.startFollow(this.cameraAnchor,true,.09,.09);
+      this.onStateChange();
+      this.saving();
+      this.announce('CLEAR OF MOTHERSHIP · MANUAL CONTROL');
     });
   }
 
