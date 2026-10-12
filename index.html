@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#05070b" />
+    <meta name="description" content="ARROW: FRONTIER. Build your mothership. Pilot your ships. Mine the stars." />
+    <title>ARROW: FRONTIER | First Flight</title>
+  </head>
+  <body>
+    <div id="app">
+      <div id="game" aria-label="Interactive 2D space mining game"></div>
+      <div id="grain" aria-hidden="true"></div>
+      <header class="topbar">
+        <div class="brand"><span class="brand-icon">◇</span><span><strong>ARROW</strong><em>FRONTIER <span class="version">/ 0.1.0</span></em></span></div>
+        <div class="sector">PRIVATE UNIVERSE <span class="separator">/</span> VESTA SYSTEM <span class="connection">● LOCAL SIMULATION</span></div>
+        <button id="save-btn" type="button" class="ghost">SAVE PROGRESS <span>↗</span></button>
+      </header>
+      <aside class="panel">
+        <div class="eyebrow">01 / COMMAND TERMINAL</div>
+        <h1>FIRST <span>FLIGHT.</span></h1>
+        <p class="intro">Your civilization begins with one mothership and a handful of asteroids.</p>
+        <div class="divider"></div>
+        <div class="section-heading">MOTHERSHIP <span>ARROW-01</span></div>
+        <div class="metric"><span>STORAGE</span><strong id="storage">0 / 400</strong></div>
+        <div class="storage-track"><div id="storage-fill"></div></div>
+        <div class="resource"><span><i class="ore-dot iron"></i>IRON</span><strong id="stored-iron">0</strong></div>
+        <div class="resource"><span><i class="ore-dot copper"></i>COPPER</span><strong id="stored-copper">0</strong></div>
+        <div class="divider"></div>
+        <div class="section-heading">ACTIVE VESSEL <span id="ship-class">SCOUT</span></div>
+        <strong class="ship-name" id="ship-name">ARROW-01 / SCOUT</strong>
+        <div class="metric"><span>SHIP CARGO</span><strong id="cargo">0 / 60</strong></div>
+        <div class="storage-track"><div id="cargo-fill"></div></div>
+        <div class="resource"><span>FLIGHT STATE</span><strong id="ship-state">DOCKED</strong></div>
+        <div class="resource"><span>LOCATION</span><strong id="ship-position">HANGAR</strong></div>
+        <div class="divider"></div>
+        <div class="section-heading">FLEET CONTROL <span>RAVIN / LOCAL</span></div>
+        <div class="fleet" id="fleet"></div>
+        <div class="actions">
+          <button id="launch-btn" class="primary" type="button">LAUNCH VESSEL <span>↗</span></button>
+          <button id="dock-btn" class="secondary" type="button">DOCK & UNLOAD <span>↙</span></button>
+        </div>
+        <div class="divider"></div>
+        <div class="section-heading">PILOT HANDBOOK <span>CONTROLS</span></div>
+        <div class="control"><kbd>W A S D</kbd><span>Thrust / move</span></div>
+        <div class="control"><kbd>MOUSE</kbd><span>Aim vessel</span></div>
+        <div class="control"><kbd>HOLD CLICK</kbd><span>Mine targeted asteroid</span></div>
+        <div class="control"><kbd>SPACE</kbd><span>Mine nearest asteroid</span></div>
+        <div class="control"><kbd>E</kbd><span>Launch / dock</span></div>
+        <div class="control"><kbd>Q</kbd><span>Switch ships</span></div>
+        <div class="footnote">No RAVIN model tokens are consumed. Automation runs locally.</div>
+      </aside>
+      <div class="center-crosshair" aria-hidden="true"><span>+</span></div>
+      <div id="toast" role="status" aria-live="polite"></div>
+      <footer class="footer">
+        <span>ARROW / ENTERTAINMENT SYSTEM</span>
+        <span id="mission-text">AWAITING FLIGHT COMMAND</span>
+        <button id="reset-btn" class="reset" type="button">RESET SAVE</button>
+      </footer>
+      <div id="start-overlay" class="start-overlay">
+        <div class="start-content">
+          <div class="intro-mark">◇</div>
+          <div class="eyebrow">PROJECT ARROW / ENTERTAINMENT MODE</div>
+          <h2>THE FRONTIER<br /><span>STARTS HERE.</span></h2>
+          <p>Launch from your mothership. Extract your first resources. Build the future, one expedition at a time.</p>
+          <button id="start-btn" class="primary start-btn" type="button">ENTER FRONTIER <span>↗</span></button>
+          <small>VERSION 0.1.0 · EARLY PLAYABLE PROTOTYPE</small>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
