@@ -489,3 +489,49 @@ body[data-frontier-view="interior"]:has(.builder-overlay:not(.hidden)) .hangar-h
     top:70px;font-size:9px;white-space:normal;width:90%;
   }
 }
+
+
+/* Touchscreen interior: keep the ship visible above a compact command shelf. */
+.hangar-navigation-label { display:flex;justify-content:space-between;gap:10px; }
+.hangar-navigation-label strong { font-weight:500;color:#eff7ff; }
+@media (max-width:650px) {
+  body[data-frontier-view="interior"] .hangar-hud {
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    align-items:center;
+    gap:7px;
+    bottom:53px;
+    padding:10px;
+    width:calc(100vw - 16px);
+    max-height:176px;
+    overflow:hidden;
+  }
+  body[data-frontier-view="interior"] .hangar-hud .eyebrow,
+  body[data-frontier-view="interior"] .hangar-hud h2,
+  body[data-frontier-view="interior"] .hangar-hud .data-row,
+  body[data-frontier-view="interior"] .hangar-hud .hangar-note,
+  body[data-frontier-view="interior"] .hangar-hud .hangar-gesture-hint {
+    display:none;
+  }
+  body[data-frontier-view="interior"] #hangar-build-btn,
+  body[data-frontier-view="interior"] #hangar-launch-btn {
+    margin:0;
+    min-height:42px;
+    padding:8px 7px;
+    font-size:9px;
+    line-height:1.2;
+    min-width:0;
+  }
+  body[data-frontier-view="interior"] .hangar-navigation-label {
+    grid-column:1/-1;
+    padding:5px 2px 0;
+    margin:0;
+    font-size:9px;
+    border:0;
+  }
+  body[data-frontier-view="interior"] .hangar-camera-controls {
+    grid-column:1/-1;
+    grid-template-columns:44px 1fr 44px;
+  }
+  body[data-frontier-view="interior"] .hangar-camera-controls button { padding:8px; }
+}
