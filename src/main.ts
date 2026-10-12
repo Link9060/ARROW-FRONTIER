@@ -139,20 +139,26 @@ function updatePanel(): void {
   builder.tick();
 }
 
+// Phaser 3.90 intentionally removed GameConfig.resolution.
+// Instead render a device-density-sized canvas and let FIT display it in CSS
+// pixels. The scene camera zoom uses the same ratio to preserve world scale.
 const pixelRatio = Math.min(2, Math.max(1, window.devicePixelRatio || 1));
 const game = new Phaser.Game({
   type: Phaser.AUTO,
   parent: 'game',
   backgroundColor: '#05080d',
-  resolution: pixelRatio,
   scale: {
-    mode: Phaser.Scale.RESIZE,
-    width: window.innerWidth,
-    height: window.innerHeight,
+    mode: Phaser.Scale.FIT,
+    width: Math.round(window.innerWidth * pixelRatio),
+    height: Math.round(window.innerHeight * pixelRatio),
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
   render: { pixelArt: false, antialias: true, antialiasGL: true, roundPixels: false },
   scene: [scene],
+});
+window.addEventListener('resize', () => {
+  game.scale.setGameSize(Math.round(window.innerWidth * pixelRatio), Math.round(window.innerHeight * pixelRatio));
+  scene.refreshCameraZoom();
 });
 setFlightInputLock();
 
