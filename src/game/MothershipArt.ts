@@ -100,13 +100,7 @@ function drawEngine(scene:Phaser.Scene,interior:Phaser.GameObjects.Container,
 }
 function drawFixedSystems(scene:Phaser.Scene,
     interior:Phaser.GameObjects.Container,g:Phaser.GameObjects.Graphics):void {
-  // Rearward reactor, attached to center spine rather than floating.
-  g.fillStyle(0x222226,1);g.lineStyle(1.5,0x7d7d84,.8);
-  g.fillRoundedRect(-303,-44,55,88,7);
-  g.strokeRoundedRect(-303,-44,55,88,7);
-  g.lineStyle(1.6,0xc6c6ce,.7);g.strokeCircle(-275,0,17);
-  g.strokeCircle(-275,0,10);
-  g.fillStyle(0xf0f0f2,.78);g.fillCircle(-275,0,3);
+  // The reactor is a real selectable room on the central modular deck.
   // Bridge wedge is an actual nose compartment.
   polygon(g,[[282,-47],[369,-31],[485,0],[369,31],[282,47],[307,0]],
     0x2a2a2e,0xa1a1a8,1.7);
@@ -139,7 +133,7 @@ export function buildMothershipArtwork(scene:Phaser.Scene,state:GameState,
     g.lineStyle(1,0x94949c,.16);
     g.lineBetween(x,-71,x,70);
   }
-  label(scene,interior,156,-87,'MODULAR CORE',11,'#c0c0c6');
+  label(scene,interior,312,-72,'MODULAR CORE',9,'#99999f');
   drawFixedSystems(scene,interior,g);
 
   const capacity=hangarCapacity(state);
