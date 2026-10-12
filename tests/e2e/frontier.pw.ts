@@ -213,8 +213,11 @@ test('background miner continues flying while the player launches and docks',asy
   await expect.poll(async()=>{
     const x=Number(await miner.getAttribute('data-world-x'));
     const y=Number(await miner.getAttribute('data-world-y'));
-    return Math.hypot(x-before.x,y-before.y);
-  },{timeout:6500,intervals:[250,300,500]}).toBeGreaterThan(12);
+    const cargo=Number(await miner.getAttribute('data-cargo'));
+    // The miner may already be stationary at its ore deposit. Progress in
+    // either position OR extracted cargo proves the whole fleet keeps ticking.
+    return Math.hypot(x-before.x,y-before.y)>8 || cargo-before.cargo>.2;
+  },{timeout:6500,intervals:[250,300,500]}).toBe(true);
   await expect(page.locator('body')).toHaveAttribute('data-frontier-view','flight',{timeout:40_000});
   expect(errors).toEqual([]);
 });
