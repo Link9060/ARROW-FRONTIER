@@ -85,9 +85,9 @@ describe('v0.6 continuous docking route', () => {
     game.stored.alloy=40;
     expect(buildRoom(game,'hangar',4,2)).toBeNull();
     const expanded=dockingPort(game);
-    expect(expanded.entrance.y).toBe(starter.entrance.y-112);
-    expect(expanded.tractor.y).toBe(starter.tractor.y-112);
-    expect(expanded.departure.y).toBe(starter.departure.y-112);
+    expect(expanded.entrance.y).toBe(starter.entrance.y-138);
+    expect(expanded.tractor.y).toBe(starter.tractor.y-138);
+    expect(expanded.departure.y).toBe(starter.departure.y-138);
     const berth=berthWorldPosition({...game.ships[0],berth:4});
     const inbound=dockingRoute({x:HOME.x+100,y:HOME.y+250},berth,expanded);
     expect(inbound.some(w=>w.stage==='entry'&&w.point.y===expanded.entrance.y)).toBe(true);
