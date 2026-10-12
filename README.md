@@ -1,13 +1,23 @@
 # ARROW: FRONTIER
 > **A persistent 2D space exploration, mining, fleet automation, economy, and civilization-building game within Project ARROW.**
 
-**Status:** Playable browser prototype v0.6.1 (game-quality cleanup); major planned features remain unimplemented  
+**Status:** Playable browser prototype v0.6.2 (dual side hangars); major planned features remain unimplemented  
 **Document:** Master game design README, version 0.1  
 **Parent ecosystem:** Project ARROW / Resonant Assist  
 **Game:** ARROW: FRONTIER (AF)  
 **Core experience:** Build a mobile civilization, pilot ships manually, automate fleets with game-native RAVIN logic, explore and trade across star systems, and optionally enter a shared multiplayer multiverse.
 
 > This README is a **design specification**, not a statement that these systems are already implemented. Sections distinguish **agreed direction**, **proposed implementation**, and **open decisions**. Numbers and sample names are placeholders for balancing.
+
+## v0.6.2 · Dual Hangars and Central Modules
+
+The ARROW hull now holds **two independent side hangars** (A in the upper wing, B in the lower wing), with the **6×4 player-selectable modular room grid in the center**. Both 4-bay starter and 12-bay upgraded configurations fit inside the actual logo silhouette. The old room IDs, upgrade levels, inventory and berth assignments are preserved.
+
+Small scouts and miners are rescaled to their marked spaces. A 2-unit mining vessel now occupies a single visibly combined double parking cradle, exactly centered on its simulated berth. Side-specific autopilot, tractor beams, landing doors and departure coordinates serve each hangar independently. Central-core drawings, lighting, colliders, and berth geometry all read from a shared floorplan rather than multiple unrelated constants.
+
+**Verification:** Dedicated layout-fit tests cover both wings and all custom modules; Playwright launches and re-docks a saved miner through the lower hangar as well as checking desktop, mobile and a 12-bay save.
+
+See [dual-hangar design notes](docs/FRONTIER-V0.6.2-DUAL-HANGARS.md).
 
 ## v0.6.1 · Mothership Quality Pass
 

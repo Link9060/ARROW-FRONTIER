@@ -4,7 +4,7 @@ import { FlightScene } from './game/FlightScene';
 import type { ViewMode } from './game/FlightScene';
 import { activeShip, roundCargo } from './sim/engine';
 import { cargoTotal, distance, DOCK_RADIUS, HOME, storedTotal } from './sim/model';
-import { dockedBerthCount, hangarCapacity } from './sim/hangar';
+import { dockedBerthCount, hangarCapacity, sideForBerth } from './sim/hangar';
 import { powerReport } from './sim/mothership';
 import { loadGame, saveGame, resetGame } from './sim/persistence';
 import { BuilderUI } from './ui/BuilderUI';
@@ -73,14 +73,17 @@ const builder=new BuilderUI(state,()=>{
 },notice);
 scene.setDeckSelectionHandler((x,y)=>builder.selectCell(x,y));
 const virtualKeys=new Set<string>();
+const keyboardDirections=new Set<string>();
 let touchMine=false;
 function updateVirtualControls():void{
-  const x=(virtualKeys.has('right')?1:0)-(virtualKeys.has('left')?1:0);
-  const y=(virtualKeys.has('down')?1:0)-(virtualKeys.has('up')?1:0);
+  const pressed=new Set([...virtualKeys,...keyboardDirections]);
+  const x=(pressed.has('right')?1:0)-(pressed.has('left')?1:0);
+  const y=(pressed.has('down')?1:0)-(pressed.has('up')?1:0);
   scene.setVirtualInput(x,y,touchMine);
 }
 function clearVirtualControls():void{
   virtualKeys.clear();
+  keyboardDirections.clear();
   touchMine=false;
   document.querySelectorAll('.touch-pad button,.mine-button').forEach(element=>element.classList.remove('pressed'));
   updateVirtualControls();
@@ -130,7 +133,7 @@ function updateUI():void{
       'WASD to move · Space to mine · E to dock');
 
   $('hangar-occupancy').textContent=dockedBerthCount(state)+' / '+hangarCapacity(state)+' BAYS';
-  $('hangar-summary').textContent='Hangar · Bay '+String((ship.berth??0)+1).padStart(2,'0')+' · '+ship.name;
+  $('hangar-summary').textContent='Hangar '+(sideForBerth(ship.berth??0)==='north'?'A':'B')+' · Bay '+String((ship.berth??0)+1).padStart(2,'0')+' · '+ship.name;
   $('hangar-camera-zoom').textContent=Math.round(scene.getCameraStatus().zoom*100)+'%';
 
   const launch=$<HTMLButtonElement>('launch-btn');
@@ -246,6 +249,29 @@ $('fleet-resume').addEventListener('click',()=>{
   updateUI();
   persist();
   notice(resumed?resumed+' idle ship(s) resumed':'No idle ships');
+});
+
+// Phaser handles normal keyboard input, but a native button can keep focus
+// after Launch. Mirror movement keys at window level so flight never feels
+// temporarily unresponsive. Input is normalized by the scene, not doubled.
+const keyDirection:Record<string,string>={
+  KeyW:'up',ArrowUp:'up',KeyS:'down',ArrowDown:'down',
+  KeyA:'left',ArrowLeft:'left',KeyD:'right',ArrowRight:'right',
+};
+window.addEventListener('keydown',event=>{
+  if(!started||event.target instanceof HTMLInputElement ||
+      event.target instanceof HTMLTextAreaElement ||
+      event.target instanceof HTMLSelectElement)return;
+  const direction=keyDirection[event.code];
+  if(direction){keyboardDirections.add(direction);updateVirtualControls();}
+}, {passive:true});
+window.addEventListener('keyup',event=>{
+  const direction=keyDirection[event.code];
+  if(direction){keyboardDirections.delete(direction);updateVirtualControls();}
+});
+window.addEventListener('blur',()=>{
+  keyboardDirections.clear();
+  updateVirtualControls();
 });
 
 window.addEventListener('keydown',event=>{

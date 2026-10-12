@@ -4,7 +4,8 @@ import {
 } from './model';
 import type { Asteroid, GameState, Ship } from './model';
 import { runIndustry } from './mothership';
-import { berthWorldPosition, findAvailableBerth, MOTHERSHIP } from './hangar';
+import { berthWorldPosition, findAvailableBerth, sideForBerth, berthHeading } from './hangar';
+import { portLocal } from './flagshipLayout';
 
 export type DockResult = 'docked' | 'too-far' | 'already-docked' | 'hangar-full';
 
@@ -27,12 +28,13 @@ export function switchShip(state: GameState, nextId: string): boolean {
 
 export function launchShip(ship: Ship): boolean {
   if (!ship.docked) return false;
-  ship.docked = false;
-  // Launch outside the physical mothership hull, not inside its exterior.
-  ship.berth = undefined;
-  ship.x = MOTHERSHIP.departure.x;
-  ship.y = MOTHERSHIP.departure.y;
-  ship.angle = -Math.PI / 2;
+  const previousSide=sideForBerth(ship.berth??0);
+  const localDeparture=portLocal(previousSide).departure;
+  ship.docked=false;
+  ship.berth=undefined;
+  ship.x=HOME.x+localDeparture.x;
+  ship.y=HOME.y+localDeparture.y;
+  ship.angle=previousSide==='north'?-Math.PI/2:Math.PI/2;
   return true;
 }
 
@@ -60,8 +62,8 @@ export function dockShip(state: GameState, ship: Ship): DockResult {
   const position = berthWorldPosition(ship);
   ship.x = position.x;
   ship.y = position.y;
-  ship.angle = -Math.PI / 2;
-  depositCargo(state, ship);
+  ship.angle=berthHeading(berth);
+  depositCargo(state,ship);
   return 'docked';
 }
 

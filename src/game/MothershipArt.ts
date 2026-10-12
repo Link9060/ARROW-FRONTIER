@@ -1,372 +1,276 @@
 import Phaser from 'phaser';
-import type { GameState, Room } from '../sim/model';
 import { HOME, ROOM_GRID } from '../sim/model';
-import { berthLocalPosition, dockingPort, hangarCapacity, MAX_BERTHS } from '../sim/hangar';
+import type { GameState, Room } from '../sim/model';
+import { berthLocalPosition, hangarCapacity, dockingPort, shipBerthSpan } from '../sim/hangar';
 import { MODULES, powerReport } from '../sim/mothership';
-import { CELL_SIZE, deckCellPoint } from './deckLayout';
 import { arrowOutline, FLAGSHIP_LENGTH } from '../sim/arrowGeometry';
+import { CELL_SIZE, CORE_DECK, deckCellPoint } from './deckLayout';
+import {
+  HANGAR_SIDES, hangarFloor, SIDE_SIGN, PARKING_BAY, SIDE_PORT_X,
+  SIDE_SERVICE_X,
+} from '../sim/flagshipLayout';
+import type { HangarSide } from '../sim/flagshipLayout';
 
+type XY=readonly [number,number];
+export interface AirlockArt {
+  left:Phaser.GameObjects.Container;
+  right:Phaser.GameObjects.Container;
+  centerX:number;
+}
 export interface MothershipArtwork {
   roof:Phaser.GameObjects.Container;
   interior:Phaser.GameObjects.Container;
   doors:Phaser.GameObjects.Container;
-  doorLeft:Phaser.GameObjects.Container;
-  doorRight:Phaser.GameObjects.Container;
-  doorCenterX:number;
+  airlocks:Record<HangarSide,AirlockArt>;
 }
-type XY=readonly [number,number];
-// Both sides come from the official ARROW mark, not an unrelated polygon.
-const HULL=arrowOutline(FLAGSHIP_LENGTH);
-const INNER=arrowOutline(1000,.86);
-function path(g:Phaser.GameObjects.Graphics,pts:readonly XY[],color:number,stroke:number,w=2):void{
-  g.fillStyle(color,1);
-  g.lineStyle(w,stroke,.85);
+function polygon(g:Phaser.GameObjects.Graphics,points:readonly XY[],
+    fill:number,outline:number,lineWidth=1.5):void {
+  g.fillStyle(fill,1);g.lineStyle(lineWidth,outline,.85);
   g.beginPath();
-  pts.forEach(([x,y],i)=>{if(i===0)g.moveTo(x,y);else g.lineTo(x,y);});
+  points.forEach(([x,y],i)=>i===0?g.moveTo(x,y):g.lineTo(x,y));
   g.closePath();g.fillPath();g.strokePath();
 }
 function label(scene:Phaser.Scene,container:Phaser.GameObjects.Container,
-  x:number,y:number,text:string,size=11,color='#bbbbbc'):void{
+  x:number,y:number,text:string,size=10,color='#9b9b9f'):void {
   container.add(scene.add.text(x,y,text,{
-    fontFamily:'Inter, Arial, sans-serif',fontSize:size+'px',
-    color,align:'center',
+    fontFamily:'Inter, Arial, sans-serif',
+    fontSize:size+'px',color,
+    align:'center',letterSpacing:1,
   }).setOrigin(.5));
 }
-/**
- * Physical machinery recessed into the ship floor. The old floating cards
- * and multi-line labels are deliberately gone: Build mode is the inspector.
- */
-function moduleTile(scene:Phaser.Scene,parent:Phaser.GameObjects.Container,
-  room:Room,online:boolean):void {
-  const point=deckCellPoint(room.x,room.y);
-  const {x,y}=point;
-  const w=CELL_SIZE.width-5,h=CELL_SIZE.height-2;
-  const g=scene.add.graphics();parent.add(g);
-  g.fillStyle(online?0x232326:0x161618,1);
-  g.fillRect(x-w/2,y-h/2,w,h);
-  g.lineStyle(1,online?0x67676d:0x3f3f44,.82);
-  g.strokeRect(x-w/2,y-h/2,w,h);
-  g.fillStyle(online?0xd8d8da:0x56565a,.6);
-  g.fillRect(x-w/2,y-h/2,3,h);
-  g.lineStyle(1,0xaaaab0,.5);
-  const kind=room.type;
-  if(kind==='storage'){
-    for(let j=0;j<3;j++){
-      g.strokeRect(x-w/2+9+j*9,y-5,6,9);
-    }
-  }else if(kind==='refinery'){
-    g.lineBetween(x-w/2+9,y-4,x-w/2+33,y-4);
-    g.lineBetween(x-w/2+12,y,x-w/2+30,y);
-    g.fillCircle(x-w/2+22,y+5,2);
-  }else if(kind==='reactor'){
-    g.strokeCircle(x-w/2+22,y,6);
-    g.fillCircle(x-w/2+22,y,2);
-  }else if(kind==='fabricator'){
-    g.lineBetween(x-w/2+9,y+5,x-w/2+19,y-5);
-    g.lineBetween(x-w/2+19,y-5,x-w/2+30,y+1);
+function drawRoom(scene:Phaser.Scene,container:Phaser.GameObjects.Container,
+    room:Room,online:boolean):void {
+  const p=deckCellPoint(room.x,room.y),g=scene.add.graphics();
+  container.add(g);
+  const w=CELL_SIZE.width-3,h=CELL_SIZE.height-2;
+  const base=online?0x28282b:0x171719;
+  g.fillStyle(base,1);
+  g.lineStyle(1,online?0x79797f:0x3c3c42,.8);
+  g.fillRoundedRect(p.x-w/2,p.y-h/2,w,h,3);
+  g.strokeRoundedRect(p.x-w/2,p.y-h/2,w,h,3);
+  const x=p.x-w/2+9,y=p.y;
+  g.lineStyle(1,0xd1d1d5,online?.55:.24);
+  if(room.type==='storage'){
+    for(let i=0;i<3;i++)g.strokeRect(x+i*8,y-5,6,10);
+  }else if(room.type==='refinery'){
+    g.lineBetween(x,y-5,x+21,y-5);
+    g.lineBetween(x+5,y,x+26,y);
+    g.fillCircle(x+11,y+5,2);
+  }else if(room.type==='reactor'){
+    g.strokeCircle(x+9,y,6);g.fillCircle(x+9,y,2);
+  }else if(room.type==='fabricator'){
+    g.lineBetween(x,y+6,x+11,y-5);g.lineBetween(x+11,y-5,x+22,y+3);
+  }else if(room.type==='command'){
+    g.lineBetween(x,y-4,x+18,y-4);g.lineBetween(x,y+4,x+18,y+4);
   }else{
-    g.lineBetween(x-w/2+9,y-5,x-w/2+28,y-5);
-    g.lineBetween(x-w/2+9,y+5,x-w/2+28,y+5);
+    // Legacy hangar anchor remains selectable in the 6x4 Build grid,
+    // while the actual bays are now physically split to both sides.
+    g.lineBetween(x,y,x+20,y);
+    g.lineBetween(x+12,y-4,x+20,y);
+    g.lineBetween(x+12,y+4,x+20,y);
   }
-  // Single restrained engraving instead of a separate UI-like room card.
-  label(scene,parent,x+19,y,MODULES[kind].code+' '+room.level,9,
-    online?'#c6c6c8':'#77777c');
+  label(scene,container,p.x+22,p.y,MODULES[room.type].code,8,
+    online?'#d2d2d4':'#6d6d73');
+}
+function drawEngine(scene:Phaser.Scene,interior:Phaser.GameObjects.Container,
+    g:Phaser.GameObjects.Graphics,sign:-1|1):void {
+  const shape:XY[]=[
+    [-507,-380],[-448,-374],[-333,-289],[-325,-216],
+    [-406,-240],[-480,-323],
+  ].map(([x,y])=>[x,y*sign]);
+  const inset:XY[]=[
+    [-487,-365],[-444,-352],[-355,-280],[-349,-243],
+    [-410,-261],[-471,-330],
+  ].map(([x,y])=>[x,y*sign]);
+  polygon(g,shape,0x27272b,0x8f8f97,1.5);
+  polygon(g,inset,0x131316,0x505058,1);
+  for(let i=0;i<5;i++){
+    const x=-466+i*24;
+    const y=(-337+i*19)*sign;
+    g.lineStyle(1.25,0xa7a7ae,.47);
+    g.lineBetween(x,y-12,x+16,y+12);
+  }
+  // Exhaust ports remain fully inside the original ARROW tail fins.
+  for(let i=-1;i<=1;i++){
+    const y=(-359+i*11)*sign;
+    g.fillStyle(0x09090b,1);g.lineStyle(1.4,0xc6c6ca,.76);
+    g.fillEllipse(-506,y,14,8);g.strokeEllipse(-506,y,14,8);
+  }
+  label(scene,interior,-413,-307*sign,'ENGINE '+(sign<0?'A':'B'),10,'#9b9ba3');
+}
+function drawFixedSystems(scene:Phaser.Scene,
+    interior:Phaser.GameObjects.Container,g:Phaser.GameObjects.Graphics):void {
+  // The reactor is a real selectable room on the central modular deck.
+  // Bridge wedge is an actual nose compartment.
+  polygon(g,[[282,-47],[369,-31],[485,0],[369,31],[282,47],[307,0]],
+    0x2a2a2e,0xa1a1a8,1.7);
+  polygon(g,[[323,-24],[374,-17],[432,0],[374,17],[323,24],[337,0]],
+    0x121215,0x626269,1.2);
+  label(scene,interior,364,0,'COMMAND',10,'#dedee0');
 }
 
 export function buildMothershipArtwork(scene:Phaser.Scene,state:GameState,
-  homeX=HOME.x,homeY=HOME.y):MothershipArtwork {
+    homeX=HOME.x,homeY=HOME.y):MothershipArtwork {
   const interior=scene.add.container(homeX,homeY).setDepth(7);
-  const structural=scene.add.graphics();interior.add(structural);
-  path(structural,HULL,0x101011,0xcfcfd1,3);
-  path(structural,INNER,0x1b1b1d,0x626264,1.4);
+  const g=scene.add.graphics();interior.add(g);
+  // Official ARROW mark is the exterior silhouette at EVERY stage.
+  polygon(g,arrowOutline(FLAGSHIP_LENGTH),0x0d0d10,0xd4d4d7,2.3);
+  polygon(g,arrowOutline(1020,.88),0x18181b,0x494950,1);
 
-  // Real structural trusses connect split-tail propulsion to the working
-  // center deck. Each line is part of the ship, not a floating label.
-  path(structural,[[-493,-314],[-424,-322],[-166,-61],[-207,-24]],0x222225,0x77777a,1);
-  path(structural,[[-493,314],[-424,322],[-166,61],[-207,24]],0x222225,0x77777a,1);
-  structural.lineStyle(1,0xaaaaac,.36);
-  for(let i=0;i<7;i++){
-    const x=-410+i*34;
-    const t=(x+410)/245;
-    const y=284*(1-t)+45*t;
-    structural.lineBetween(x,y-18,x+22,y+18);
-    structural.lineBetween(x,-y+18,x+22,-y-18);
+  // Compact, physically attached engines within the two rear tail fins.
+  drawEngine(scene,interior,g,-1);
+  drawEngine(scene,interior,g,1);
+
+  // Everything buildable lives in the central fuselage.
+  g.fillStyle(0x121215,1);
+  g.lineStyle(2,0x8c8c93,.79);
+  g.fillRoundedRect(CORE_DECK.x,CORE_DECK.y,CORE_DECK.width,CORE_DECK.height,9);
+  g.strokeRoundedRect(CORE_DECK.x,CORE_DECK.y,CORE_DECK.width,CORE_DECK.height,9);
+  g.lineStyle(1.2,0xd6d6dd,.24);
+  g.lineBetween(-252,-2,269,-2);
+  for(let j=0;j<7;j++){
+    const x=-225+j*73;
+    g.lineStyle(1,0x94949c,.16);
+    g.lineBetween(x,CORE_DECK.y+5,x,CORE_DECK.y+CORE_DECK.height-5);
   }
+  label(scene,interior,312,-72,'MODULAR CORE',9,'#99999f');
+  drawFixedSystems(scene,interior,g);
 
-  // The engineering deck is a manufactured lower wing, following the
-  // spearhead taper. It provides a single shared FLOOR for custom modules.
-  // No individual room should appear suspended in outer space.
-  path(structural,[
-    [-315,36],[280,36],[252,118],[205,163],[122,205],
-    [-18,259],[-305,278],[-337,182],
-  ],0x151518,0x6f6f75,1.35);
-  const floor=scene.add.graphics();interior.add(floor);
-  floor.lineStyle(1,0x8a8a90,.16);
-  for(let xx=-290;xx<230;xx+=33){
-    floor.lineBetween(xx,48,xx,230-Math.max(0,xx)*.42);
-  }
-  // A subtle continuous access gantry makes the modules part of one system.
-  floor.lineStyle(3,0x9b9ba0,.44);
-  floor.lineBetween(-260,46,246,46);
-  floor.lineStyle(1,0xbabac0,.22);
-  floor.lineBetween(-252,40,243,40);
-  for(let j=0;j<9;j++){
-    const xx=-235+j*56;
-    floor.fillStyle(0xb9b9bf,.26);
-    floor.fillRoundedRect(xx,43,15,4,2);
-  }
-  label(scene,interior,-226,258,'ENGINEERING DECK',11,'#85858b');
-
-  // Propulsion and bridge are SHIP ARCHITECTURE, not floating cards.
-  // Vector housings, recessed nozzles and conduits establish mechanical depth.
-  for(const side of [-1,1]){
-    const y=side*293;
-    path(structural,[
-      [-613,y-37],[-542,y-66],[-378,y-66],[-302,y-19],
-      [-302,y+19],[-378,y+66],[-542,y+66],[-613,y+37],
-    ],0x252529,0x98989c,1.8);
-    path(structural,[
-      [-596,y-24],[-530,y-43],[-390,y-43],[-347,y-17],
-      [-347,y+17],[-390,y+43],[-530,y+43],[-596,y+24],
-    ],0x141417,0x545459,1.1);
-    // Three heat-shielded exhaust chambers are grouped at the stern.
-    for(let i=-1;i<=1;i++){
-      const nozzleY=y+i*19;
-      structural.fillStyle(0x0b0b0c,1);
-      structural.lineStyle(2,0xc2c2c6,.73);
-      structural.fillEllipse(-612,nozzleY,23,15);
-      structural.strokeEllipse(-612,nozzleY,23,15);
-      structural.fillStyle(0xcfcfd2,.16);
-      structural.fillEllipse(-617,nozzleY,11,7);
-    }
-    for(let i=0;i<7;i++){
-      const x=-540+i*25;
-      structural.lineStyle(2,0xa4a4aa,.43);
-      structural.lineBetween(x,y-40,x+8,y+40);
-    }
-    structural.lineStyle(2.5,0xc1c1c4,.45);
-    structural.lineBetween(-370,y-23,-275,side*45);
-    structural.lineStyle(1.1,0x82828b,.45);
-    structural.lineBetween(-360,y+23,-265,side*34);
-    // Small etched identifier belongs to the hardware surface.
-    label(scene,interior,-453,y,'ENGINE '+(side<0?'A':'B'),9,'#94949a');
-  }
-
-  // The narrow nose holds the fixed command bridge. Layered wedge panels
-  // follow the actual ARROW tip, rather than a rounded rectangle.
-  path(structural,[
-    [251,-55],[348,-47],[486,0],[348,47],[251,55],[291,0],
-  ],0x29292c,0xb8b8ba,1.8);
-  path(structural,[
-    [305,-32],[363,-26],[448,0],[363,26],[305,32],[328,0],
-  ],0x111113,0x68686e,1.4);
-  structural.lineStyle(1.3,0xd3d3d5,.48);
-  structural.lineBetween(341,-22,391,0);
-  structural.lineBetween(341,22,391,0);
-  structural.lineBetween(376,-17,408,0);
-  structural.lineBetween(376,17,408,0);
-  label(scene,interior,345,0,'BRIDGE',11,'#d5d5d8');
-
-  // A dedicated fusion room in the rearward engineering sector.
-  const reactor=scene.add.graphics();interior.add(reactor);
-  reactor.fillStyle(0x18181b,1);
-  reactor.lineStyle(1.6,0x74747a,.72);
-  reactor.fillRoundedRect(-383,64,90,102,7);
-  reactor.strokeRoundedRect(-383,64,90,102,7);
-  reactor.lineStyle(2.3,0xe5e5e7,.68);
-  reactor.strokeCircle(-339,113,23);
-  reactor.strokeCircle(-339,113,13);
-  reactor.fillStyle(0xffffff,.73);
-  reactor.fillCircle(-339,113,4);
-  for(let i=-1;i<=1;i++){
-    reactor.lineStyle(1.2,0xaaaaaf,.53);
-    reactor.lineBetween(-385,113+i*17,-398,113+i*17);
-  }
-  label(scene,interior,-339,154,'REACTOR',9,'#a5a5a9');
-
-  // Clear central utility spine connects the bridge and both hangar shoulders.
-  structural.fillStyle(0x141416,1);
-  structural.lineStyle(1,0x7a7a7d,.46);
-  structural.fillRoundedRect(-249,-35,540,70,8);
-  structural.strokeRoundedRect(-249,-35,540,70,8);
-  structural.lineStyle(1.2,0xc4c4c6,.32);
-  structural.lineBetween(-244,0,289,0);
-
-  // Hangar floor: additional owned berth rows extend the SIDE superstructure.
-  const capacity=Math.min(MAX_BERTHS,hangarCapacity(state));
-  const rowCount=Math.max(1,Math.ceil(capacity/4));
-  const floorTop=-183-(rowCount-1)*138;
-  const floorBottom=-45;
-  const floorHeight=floorBottom-floorTop;
-  structural.fillStyle(0x0b0b0d,1);
-  structural.lineStyle(3,0xc7c7c9,.85);
-  structural.fillRoundedRect(-284,floorTop,568,floorHeight,14);
-  structural.strokeRoundedRect(-284,floorTop,568,floorHeight,14);
-  structural.lineStyle(1,0x89898c,.12);
-  for(let x=-270;x<278;x+=35)structural.lineBetween(x,floorTop+7,x,floorBottom-7);
-  for(let y=floorTop+14;y<floorBottom;y+=36)structural.lineBetween(-277,y,279,y);
-
-  // Service rails, physical bay lanes, locking clamps and numbered ground marks.
-  structural.fillStyle(0x39393b,.9);
-  structural.fillRoundedRect(-277,floorTop+10,10,Math.max(30,floorHeight-20),4);
-  structural.fillRoundedRect(269,floorTop+10,10,Math.max(30,floorHeight-20),4);
-  for(let berth=0;berth<capacity;berth++){
-    const p=berthLocalPosition(berth);
-    structural.lineStyle(1.8,0xc4c4c5,.6);
-    structural.strokeRoundedRect(p.x-45,p.y-42,90,84,6);
-    structural.lineStyle(3,0xe4e4e5,.32);
-    structural.lineBetween(p.x-39,p.y-29,p.x-39,p.y+29);
-    structural.lineBetween(p.x+39,p.y-29,p.x+39,p.y+29);
-    structural.fillStyle(0xe9e9e9,.47);
-    structural.fillCircle(p.x-39,p.y+29,3);
-    structural.fillCircle(p.x+39,p.y+29,3);
-    label(scene,interior,p.x,p.y-34,String(berth+1).padStart(2,'0'),9,'#99999c');
-  }
-  // A clear through-aisle separates left and right parking banks. The
-  // guided ship travels here and enters its bay only from the row service lane.
-  structural.fillStyle(0x1b1b1d,.92);
-  structural.fillRect(-48,floorTop+6,96,floorHeight-12);
-  structural.lineStyle(1.5,0xb4b4b8,.53);
-  structural.lineBetween(-48,floorTop+7,-48,floorBottom-7);
-  structural.lineBetween(48,floorTop+7,48,floorBottom-7);
-  structural.lineStyle(1,0xc7c7c9,.28);
-  for(let aisleY=floorTop+24;aisleY<floorBottom-20;aisleY+=45){
-    structural.lineBetween(-8,aisleY,0,aisleY+8);
-    structural.lineBetween(8,aisleY,0,aisleY+8);
-  }
-  label(scene,interior,106,floorBottom+24,'HANGAR / TAXI AISLE',10,'#a7a7a9');
-
-  // Physical side access: door housing, passage and a tractor emitter.
-  const port=dockingPort(state);
-  const doorY=port.entrance.y-homeY;
-  // Airlock passage is a solid continuation of the hangar floor.
-  const passageTop=doorY+21;
-  const passageBottom=floorTop+18;
-  const passageLength=Math.max(20,passageBottom-passageTop);
-  structural.fillStyle(0x252527,1);
-  structural.lineStyle(1.8,0x929294,.85);
-  structural.fillRoundedRect(-42,passageTop,84,passageLength,6);
-  structural.strokeRoundedRect(-42,passageTop,84,passageLength,6);
-  structural.lineStyle(1,0xd0d0d2,.27);
-  structural.lineBetween(0,passageTop+6,0,passageTop+passageLength-6);
-  structural.fillStyle(0x272729,1);
-  structural.lineStyle(2.2,0xe3e3e3,.87);
-  structural.fillRoundedRect(-60,doorY-13,120,41,7);
-  structural.strokeRoundedRect(-60,doorY-13,120,41,7);
-  structural.lineStyle(1,0xffffff,.38);
-  for(let i=0;i<7;i++)structural.lineBetween(-45+i*15,doorY-9,-45+i*15,doorY+24);
-  structural.lineStyle(2,0xa1a1a1,.5);
-  structural.lineBetween(0,doorY+29,0,floorTop+4);
-  structural.fillStyle(0xf4f4f4,.83);
-  structural.fillCircle(port.tractor.x-homeX,port.tractor.y-homeY,7);
-  label(scene,interior,0,doorY-36,'AIRLOCK A',10,'#e1e1e1');
-
-  // Existing room ids/coordinates remain the same; each renderer uses the
-  // exact physical deck mapping also used by direct mouse selection.
+  const capacity=hangarCapacity(state);
+  const tiers=Math.max(1,Math.ceil(capacity/4));
   const online=powerReport(state).onlineIds;
+  for(const side of HANGAR_SIDES){
+    const sign=SIDE_SIGN[side];
+    const floor=hangarFloor(side,tiers);
+    g.fillStyle(0x0a0a0d,1);
+    g.lineStyle(2.2,0xc0c0c5,.75);
+    g.fillRoundedRect(floor.x,floor.y,floor.width,floor.height,10);
+    g.strokeRoundedRect(floor.x,floor.y,floor.width,floor.height,10);
+    // A real clearance spine on the RIGHT of the parked craft.
+    const aisleX=SIDE_SERVICE_X;
+    g.fillStyle(0x242428,.8);
+    g.fillRect(aisleX-14,floor.y+5,29,floor.height-10);
+    g.lineStyle(1,0xa5a5ab,.4);
+    g.lineBetween(aisleX-15,floor.y+6,aisleX-15,floor.y+floor.height-6);
+    g.lineBetween(aisleX+15,floor.y+6,aisleX+15,floor.y+floor.height-6);
+    const yMin=floor.y+12,yMax=floor.y+floor.height-9;
+    for(let y=yMin;y<yMax;y+=22){
+      g.lineStyle(1,0xbdbdc3,.26);
+      g.lineBetween(aisleX-4,y,aisleX+4,y+sign*5);
+    }
+    const consumed=new Set<number>();
+    for(let berth=0;berth<capacity;berth++){
+      if(consumed.has(berth))continue;
+      const p=berthLocalPosition(berth);
+      if(Math.sign(p.y)!==sign)continue;
+      // Wide ships OWN a physically combined double berth. Draw one merged
+      // parking cradle whose center is EXACTLY berthWorldPosition(ship).
+      const wide=state.ships.some(ship=>ship.docked &&
+        ship.berth===berth && shipBerthSpan(ship)===2);
+      const paired=wide&&berth+1<capacity&&berth%2===0;
+      if(paired)consumed.add(berth+1);
+      const cx=paired?berthLocalPosition(berth,2).x:p.x;
+      const w=PARKING_BAY.width+(paired?95:0),h=PARKING_BAY.height;
+      g.fillStyle(0x161619,1);
+      g.lineStyle(1.3,0x898991,.78);
+      g.fillRoundedRect(cx-w/2,p.y-h/2,w,h,5);
+      g.strokeRoundedRect(cx-w/2,p.y-h/2,w,h,5);
+      g.lineStyle(2,0xc7c7cf,.45);
+      for(const xx of [cx-w/2+8,cx+w/2-8]){
+        g.lineBetween(xx,p.y-h/2+9,xx,p.y+h/2-9);
+        g.fillStyle(0xc7c7cf,.5);
+        g.fillCircle(xx,p.y+sign*(h/2-9),2);
+      }
+      const title=paired
+        ?String(berth+1).padStart(2,'0')+' / '+String(berth+2).padStart(2,'0')
+        :String(berth+1).padStart(2,'0');
+      label(scene,interior,cx,p.y-sign*19,title,8,'#888890');
+    }
+    // Narrow entrance follows the actual side of the ship.
+    const port=dockingPort(state,side);
+    const doorY=port.entrance.y-homeY;
+    const x=SIDE_PORT_X;
+    const floorOuter=side==='north'?floor.y:floor.y+floor.height;
+    const low=Math.min(doorY,floorOuter),high=Math.max(doorY,floorOuter);
+    g.fillStyle(0x252529,1);
+    g.lineStyle(1.5,0x94949a,.83);
+    g.fillRoundedRect(x-21,low,42,Math.max(11,high-low),5);
+    g.strokeRoundedRect(x-21,low,42,Math.max(11,high-low),5);
+    g.fillStyle(0x313136,1);
+    g.lineStyle(1.8,0xd8d8dd,.88);
+    g.fillRoundedRect(x-40,doorY-12,80,24,4);
+    g.strokeRoundedRect(x-40,doorY-12,80,24,4);
+    g.fillStyle(0xdedee1,.75);
+    g.fillCircle(port.tractor.x-homeX,port.tractor.y-homeY,4);
+    label(scene,interior,-231,sign*70,
+      side==='north'?'HANGAR A':'HANGAR B',10,'#c4c4c8');
+  }
+
   const buildMode=document.body.dataset.uiPanel==='build';
   if(buildMode){
     for(let y=0;y<ROOM_GRID.rows;y++){
       for(let x=0;x<ROOM_GRID.columns;x++){
-        if(state.rooms.some(room=>room.x===x&&room.y===y))continue;
-        const connected=state.rooms.some(room=>Math.abs(room.x-x)+Math.abs(room.y-y)===1);
-        if(!connected)continue;
+        if(state.rooms.some(r=>r.x===x&&r.y===y))continue;
+        if(!state.rooms.some(r=>Math.abs(r.x-x)+Math.abs(r.y-y)===1))continue;
         const p=deckCellPoint(x,y);
-        const g=scene.add.graphics();interior.add(g);
-        g.lineStyle(1,0xb0b0b2,.32);
+        g.lineStyle(1,0x919199,.42);
         g.strokeRoundedRect(p.x-CELL_SIZE.width/2,p.y-CELL_SIZE.height/2,
-          CELL_SIZE.width,CELL_SIZE.height,6);
-        label(scene,interior,p.x,p.y,'+',15,'#818184');
+          CELL_SIZE.width,CELL_SIZE.height,4);
+        label(scene,interior,p.x,p.y,'+',13,'#76767d');
       }
     }
   }
-  // Every built module is drawn at its actual click-selectable floor slot.
-  // Command/engines/hangar and starter reactor live in dedicated facilities.
-  for(const room of state.rooms){
-    if(room.type==='command'||room.type==='hangar'||room.id==='room-2')continue;
-    moduleTile(scene,interior,room,online.has(room.id));
-  }
+  for(const room of state.rooms)drawRoom(scene,interior,room,online.has(room.id));
 
-  // Opaque logo-based upper hull. The door is a distinct physical hatch,
-  // rather than fading out every room as one identical rectangular slab.
+  // Opaque armor covers the interior while in flight. Refinement stays
+  // faithful to the ARROW mark instead of expanding rectangular pods.
   const roof=scene.add.container(homeX,homeY).setDepth(26);
   const armor=scene.add.graphics();roof.add(armor);
-  path(armor,HULL,0x151517,0xefefef,3.5);
-  path(armor,INNER,0x232325,0x79797c,1.3);
-  // The side hangar shoulder visually expands when new parking rows are built.
-  const shellTop=floorTop-16;
-  armor.fillStyle(0x1b1b1e,1);
-  armor.lineStyle(2.5,0xc7c7c8,.85);
-  armor.fillRoundedRect(-292,shellTop,586,58,11);
-  armor.strokeRoundedRect(-292,shellTop,586,58,11);
-  armor.lineStyle(1.5,0xa3a3a5,.76);
-  for(let i=0;i<capacity;i++){
-    const p=berthLocalPosition(i);
-    armor.lineBetween(p.x-52,p.y-53,p.x+52,p.y-53);
+  polygon(armor,arrowOutline(FLAGSHIP_LENGTH),0x131316,0xe6e6e9,2.6);
+  polygon(armor,arrowOutline(1020,.87),0x202024,0x61616a,1.1);
+  armor.lineStyle(1.3,0x9b9ba2,.53);
+  armor.lineBetween(-425,-332,227,-52);
+  armor.lineBetween(-425,332,227,52);
+  armor.lineBetween(-220,-107,233,-16);
+  armor.lineBetween(-220,107,233,16);
+  // Both bay-door stations exist in the broad shoulders.
+  for(const side of HANGAR_SIDES){
+    const sign=SIDE_SIGN[side],port=dockingPort(state,side);
+    const y=port.entrance.y-homeY;
+    armor.fillStyle(0x27272a,1);armor.lineStyle(1.6,0xc4c4ca,.8);
+    armor.fillRoundedRect(SIDE_PORT_X-44,y-15,88,30,5);
+    armor.strokeRoundedRect(SIDE_PORT_X-44,y-15,88,30,5);
+    label(scene,roof,-188,sign*207,side==='north'?'A / DOCK':'B / DOCK',
+      10,'#b5b5bb');
   }
-  // Exterior service spine physically joins the external airlock to the
-  // hangar roof. Expanded bays extend this connector with the hull.
-  armor.fillStyle(0x242427,1);
-  armor.lineStyle(2,0xa7a7ac,.75);
-  armor.fillRoundedRect(-52,doorY+16,104,Math.max(27,shellTop-(doorY+16))+10,6);
-  armor.strokeRoundedRect(-52,doorY+16,104,Math.max(27,shellTop-(doorY+16))+10,6);
-  armor.lineStyle(1,0xffffff,.32);
-  armor.lineBetween(0,doorY+23,0,shellTop+4);
+  polygon(armor,[[290,-41],[420,-23],[499,0],[420,23],[290,41],[330,0]],
+    0x0b0b0d,0xbfbfc7,1.5);
+  label(scene,roof,-45,0,'A R R O W',23,'#cfcfd4');
 
-  // Cockpit and central structure remain strongly tied to the mark's nose.
-  armor.fillStyle(0x080809,1);
-  armor.lineStyle(2,0xd0d0d0,.88);
-  armor.fillTriangle(245,-42,493,0,245,42);
-  armor.strokeTriangle(245,-42,493,0,245,42);
-  armor.lineStyle(1,0xdadadb,.42);
-  armor.lineBetween(-297,-251,245,-45);
-  armor.lineBetween(-297,251,245,45);
-  armor.lineBetween(-190,-118,191,0);
-  armor.lineBetween(-190,118,191,0);
-  for(const side of [-1,1]){
-    const y=side*292;
-    armor.fillStyle(0x303034,1);
-    armor.lineStyle(1.5,0xe1e1e1,.8);
-    armor.fillRoundedRect(-603,y-37,95,74,8);
-    armor.strokeRoundedRect(-603,y-37,95,74,8);
-    armor.fillStyle(0xd0d0d2,.75);
-    armor.fillRoundedRect(-611,y-25,8,50,4);
-  }
-  armor.fillStyle(0x111113,1);
-  armor.lineStyle(2,0xe0e0e0,.9);
-  armor.fillRoundedRect(-62,doorY-19,124,52,7);
-  armor.strokeRoundedRect(-62,doorY-19,124,52,7);
-  label(scene,roof,0,doorY-41,'HANGAR A',12,'#f1f1f1');
-  label(scene,roof,-155,3,'A R R O W',25,'#ededed');
-  label(scene,roof,0,468,'MOTHERSHIP 01',12,'#b3b3b5');
-
-  // A true two-leaf airlock sits ABOVE the opaque roof. Each armored half
-  // retracts sideways before the vessel enters. Both halves stay visible
-  // throughout the transition rather than teleporting out of existence.
   const doors=scene.add.container(homeX,homeY).setDepth(29);
-  const doorCenterX=port.entrance.x-homeX;
-  const createLeaf=(side:-1|1):Phaser.GameObjects.Container=>{
-    const leaf=scene.add.container(doorCenterX+side*29,doorY);
-    const panel=scene.add.graphics();
-    panel.fillStyle(0x333337,1);
-    panel.lineStyle(1.8,0xe0e0e2,.95);
-    panel.fillRoundedRect(-28,-17,56,34,3);
-    panel.strokeRoundedRect(-28,-17,56,34,3);
-    panel.lineStyle(1,0xb1b1b5,.5);
-    for(let j=0;j<3;j++){
-      const x=-17+j*13;
-      panel.lineBetween(x,-11,x,11);
-    }
-    // Closing seam and safety markings.
-    panel.lineStyle(2,0xffffff,.7);
-    panel.lineBetween(-side*28,-14,-side*28,14);
-    leaf.add(panel);
-    doors.add(leaf);
-    return leaf;
+  const makeAirlock=(side:HangarSide):AirlockArt=>{
+    const centerX=SIDE_PORT_X,centerY=dockingPort(state,side).entrance.y-homeY;
+    const createLeaf=(dir:-1|1)=>{
+      const leaf=scene.add.container(centerX+dir*20,centerY);
+      const panel=scene.add.graphics();
+      panel.fillStyle(0x34343a,1);
+      panel.lineStyle(1.2,0xdedee4,.9);
+      panel.fillRoundedRect(-19,-12,38,24,3);
+      panel.strokeRoundedRect(-19,-12,38,24,3);
+      panel.lineStyle(1,0xaaaab2,.5);
+      panel.lineBetween(-8,-7,-8,7);
+      panel.lineBetween(4,-7,4,7);
+      leaf.add(panel);doors.add(leaf);
+      return leaf;
+    };
+    return {
+      centerX,
+      left:createLeaf(-1),
+      right:createLeaf(1),
+    };
   };
-  const doorLeft=createLeaf(-1);
-  const doorRight=createLeaf(1);
-  const docked=state.ships.some(ship=>ship.id===state.activeShipId&&ship.docked);
-  if(docked){doorLeft.x-=45;doorRight.x+=45;}
-  return {roof,interior,doors,doorLeft,doorRight,doorCenterX};
+  const airlocks:Record<HangarSide,AirlockArt>={
+    north:makeAirlock('north'),south:makeAirlock('south'),
+  };
+  return {roof,interior,doors,airlocks};
 }

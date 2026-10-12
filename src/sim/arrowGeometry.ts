@@ -32,12 +32,12 @@ export const SHIP_ZONES = {
   bridge: { x: 350, y: 0 },
   engine: { x: -480, y: 0 },
   spine: { x: -120, y: 0 },
-  hangar: { x: -115, y: -178 },
+  hangar: { x: -187, y: -106 },
   // Side door sits just outside the physical hangar shell, not at the end of
   // the long detached tube from the early prototype.
   // Centered on the unobstructed taxi spine between two berth banks.
-  airlock: { x: 0, y: -271 },
-  tractor: { x: 0, y: -296 },
+  airlock: { x: -75, y: -250 },
+  tractor: { x: -75, y: -272 },
 } as const;
 
 /** Ship type adjusts thickness, not identity. */
@@ -45,12 +45,12 @@ export function hullSize(ship: Pick<Ship,'role'|'capacity'>): {
   length: number; widthScale: number;
 } {
   if (/miner|industrial|hauler/i.test(ship.role)) {
-    return { length: 85, widthScale: 1.08 };
+    return { length: 48, widthScale: 1.06 };
   }
   if (/heavy|capital|large/i.test(ship.role) || ship.capacity >= 180) {
-    return { length: 120, widthScale: 1.12 };
+    return { length: 82, widthScale: 1.1 };
   }
-  return { length: 59, widthScale: 1 };
+  return { length: 39, widthScale: 1 };
 }
 
 export function localToWorld(local: Point, center: Point, heading = 0): Point {
