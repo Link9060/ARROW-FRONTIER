@@ -27,12 +27,15 @@ describe('ARROW hull is solid except in authorized docking transition',()=>{
     expect(hitsMothership(old,game)).toBe(true);
     expect(resolveHullMovement(old,outward,game)).toEqual(outward);
   });
-  it('side hangar collision expands when more physical docking slots are built',()=>{
+  it('both side hangars and their airlock collars are solid during manual flight',()=>{
     const game=makeNewGame();
-    const point={x:HOME.x+100,y:HOME.y-285};
-    expect(hitsMothership(point,game)).toBe(false);
+    const north={x:HOME.x-75,y:HOME.y-254};
+    const south={x:HOME.x-75,y:HOME.y+254};
+    expect(hitsMothership(north,game)).toBe(true);
+    expect(hitsMothership(south,game)).toBe(true);
     game.stored.iron=500;game.stored.copper=500;game.stored.alloy=40;
     expect(buildRoom(game,'hangar',4,2)).toBeNull();
-    expect(hitsMothership(point,game)).toBe(true);
+    expect(hitsMothership(north,game)).toBe(true);
+    expect(hitsMothership(south,game)).toBe(true);
   });
 });
