@@ -32,7 +32,10 @@ function validShips(value: unknown): value is Ship[] {
         !finite(ship.x) || ship.x > WORLD.width || !finite(ship.y) ||
         ship.y > WORLD.height || !finite(ship.angle, -1000) ||
         !finite(ship.capacity, 1) || !finite(ship.speed, 1) ||
-        !finite(ship.miningRate, 1)) return false;
+        !finite(ship.miningRate, 1) ||
+        (ship.order!==undefined && !['mine','return','hold'].includes(String(ship.order))) ||
+        (ship.turnaround!==undefined &&
+          (!finite(ship.turnaround)||ship.turnaround>60))) return false;
     seen.add(ship.id);
     return true;
   });
