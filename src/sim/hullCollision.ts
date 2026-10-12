@@ -47,6 +47,11 @@ export function hitsMothership(world:Point,state:Pick<GameState,'rooms'>,padding
 export function resolveHullMovement(old:Point,wanted:Point,
   state:Pick<GameState,'rooms'>):Point {
   if(!hitsMothership(wanted,state))return wanted;
+  // Recover older saves spawned in an armored compartment: allow the craft
+  // to steer outward rather than trapping it forever inside a solid collider.
+  if(hitsMothership(old,state) &&
+    Math.hypot(wanted.x-HOME.x,wanted.y-HOME.y)>
+    Math.hypot(old.x-HOME.x,old.y-HOME.y))return wanted;
   // Slide along walls where possible instead of freezing the whole ship.
   const horizontal={x:wanted.x,y:old.y};
   if(!hitsMothership(horizontal,state))return horizontal;
