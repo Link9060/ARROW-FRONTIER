@@ -35,7 +35,21 @@ function validShips(value: unknown): value is Ship[] {
         !finite(ship.miningRate, 1) ||
         (ship.order!==undefined && !['mine','return','hold'].includes(String(ship.order))) ||
         (ship.turnaround!==undefined &&
-          (!finite(ship.turnaround)||ship.turnaround>60))) return false;
+          (!finite(ship.turnaround)||ship.turnaround>60)) ||
+        (ship.navigation!==undefined && (
+          !isRecord(ship.navigation) ||
+          !['launch','dock'].includes(String(ship.navigation.kind)) ||
+          !['north','south'].includes(String(ship.navigation.side)) ||
+          !Number.isInteger(ship.navigation.berth) ||
+          (ship.navigation.berth as number)<0 ||
+          (ship.navigation.berth as number)>11 ||
+          !Number.isInteger(ship.navigation.step) ||
+          (ship.navigation.step as number)<0 ||
+          (ship.navigation.step as number)>30 ||
+          !isRecord(ship.navigation.origin) ||
+          !finite(ship.navigation.origin.x) ||
+          !finite(ship.navigation.origin.y)
+        ))) return false;
     seen.add(ship.id);
     return true;
   });
@@ -149,7 +163,9 @@ export function recoverInterruptedDocking(state:GameState):boolean {
   let changed=false;
   for(let index=0;index<state.ships.length;index++){
     const ship=state.ships[index];
-    if(ship.docked)continue;
+    // A valid autonomous route may pass through an authorized airlock.
+    // Do not "recover" it to the far side of the world during reload.
+    if(ship.docked||ship.navigation)continue;
     if(hitsMothership(ship,state)){
       // This may be a twelve-bay save. Use the actual expanded airlock's
       // external clearance point instead of a fixed starter-hangar offset.
