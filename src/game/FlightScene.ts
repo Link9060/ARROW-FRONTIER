@@ -183,14 +183,16 @@ export class FlightScene extends Phaser.Scene {
     // One to three hangar rows changes the real vertical dimensions.
     // Fit the EXTENDED AIRLOCK too, not just the original arrow hull.
     return {
-      top:Math.min(-500,port.tractor.y-HOME.y-76),
-      bottom:500,
+      top:Math.min(-470,port.tractor.y-HOME.y-60),
+      bottom:475,
     };
   }
   private interiorZoom(): number {
     const margins=this.interiorMargins();
     const availableWidth=Math.max(260,window.innerWidth-margins.left-margins.right-55);
-    const availableHeight=Math.max(290,window.innerHeight-175);
+    // Keep the nav and controls clear without wasting nearly a quarter of
+    // the viewport on empty safety margins.
+    const availableHeight=Math.max(290,window.innerHeight-132);
     const bounds=this.interiorVerticalBounds();
     const shipHeight=bounds.bottom-bounds.top;
     return Math.max(.23,Math.min(1.04,
