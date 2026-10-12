@@ -206,6 +206,7 @@ test('background miner continues flying while the player launches and docks',asy
   const before={
     x:Number(await miner.getAttribute('data-world-x')),
     y:Number(await miner.getAttribute('data-world-y')),
+    cargo:Number(await miner.getAttribute('data-cargo')),
   };
   // This used to fail: FlightScene skipped the entire simulation whenever
   // the active scout was in its multi-second launch cinematic.
