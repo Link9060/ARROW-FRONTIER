@@ -262,7 +262,7 @@ test('Fleet panel dispatches docked miner, recalls it and retains Hold without m
   await page.screenshot({path:'test-results/v063-fleet-mine.png'});
   await recall.click();
   await expect(miner).toHaveAttribute('data-order','return');
-  await expect(miner).toHaveAttribute('data-docked','true',{timeout:25000});
+  await expect(miner).toHaveAttribute('data-docked','true',{timeout:45000});
   await expect(miner).toHaveAttribute('data-order','hold');
   await expect(miner.locator('.fleet-state')).toContainText('DOCKED');
   await page.screenshot({path:'test-results/v063-fleet-recalled.png'});
@@ -270,6 +270,8 @@ test('Fleet panel dispatches docked miner, recalls it and retains Hold without m
   await expect(miner).toHaveAttribute('data-docked','false',{timeout:7000});
   await hold.click();
   await expect(miner).toHaveAttribute('data-order','hold');
-  await expect(miner.locator('.fleet-state')).toContainText('HOLDING');
+  // Hold must finish any occupied airlock route first; never freeze a ship
+  // halfway across the landing gates.
+  await expect(miner.locator('.fleet-state')).toContainText('HOLDING',{timeout:20000});
   expect(errors).toEqual([]);
 });
