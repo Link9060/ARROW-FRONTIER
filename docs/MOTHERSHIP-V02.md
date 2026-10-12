@@ -1,6 +1,6 @@
 # ARROW: FRONTIER v0.2 · Mothership Expansion
 
-Status: **implemented on the v0.2 feature branch, subject to CI and browser playtesting**.
+Status: **merged into main; all automated simulation tests and the production build passed. Public-browser playtesting is still recommended.**
 
 ## What's new
 
