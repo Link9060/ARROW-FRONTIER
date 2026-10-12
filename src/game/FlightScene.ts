@@ -359,8 +359,10 @@ export class FlightScene extends Phaser.Scene {
       // Flight already has an active-ship HUD. Hide duplicate active labels
       // and nearby nonactive names that obscure asteroids and other vessels.
       const active=activeShip(this.state);
-      label.setVisible(visible && (this.mode==='interior' ||
-        (ship.id!==active.id && distance(ship,active)>105)));
+      // The physical bay number + active-ship HUD already identify docked
+      // vessels. Floating text above each sprite was fighting with the deck.
+      label.setVisible(visible && this.mode==='flight' &&
+        ship.id!==active.id && distance(ship,active)>145);
       label.setColor(ship.id===this.state.activeShipId?'#eeeeee':'#99999c');
     }
     for(const asteroid of this.state.asteroids){
@@ -507,12 +509,15 @@ export class FlightScene extends Phaser.Scene {
         Math.atan2(destination.point.y-start.y,destination.point.x-start.x);
       const heading=shortestAngle(start.heading,targetHeading);
       const duration=segmentDuration(start,destination.point,destination.speed);
-      const targetZoom=this.flightZoom()*(
-        destination.stage==='align'?.89:
-        destination.stage==='approach'?1.04:
-        destination.stage==='tractor'?1.16:
-        destination.stage==='entry'?1.23:1.12
-      );
+      // A controlled close-up, not a sudden 140%-zoom explosion. Keep the
+      // vessel and immediate docking hardware in the same composition.
+      const targetZoom=Math.min(this.flightZoom()*1.02,
+        this.deviceScale()*(
+          destination.stage==='align'?.82:
+          destination.stage==='approach'?.93:
+          destination.stage==='tractor'?1.02:
+          destination.stage==='entry'?.96:.88
+        ));
       this.tweens.addCounter({
         from:0,to:1,duration,
         ease:destination.stage==='taxi'?'Sine.InOut':'Linear',
@@ -573,6 +578,10 @@ export class FlightScene extends Phaser.Scene {
     this.cameras.main.stopFollow();
     this.setViewMode('transition');
     this.announce('AUTOPILOT · ALIGNING WITH SIDE HANGAR');
+    // Ease away from the freely-piloted flight camera before acquiring the
+    // automatic docking route so player control never visually snaps.
+    this.animateCameraTo({x:ship.x,y:ship.y},
+      Math.min(this.flightZoom(),.94*this.deviceScale()),520,()=>{
     this.flyRoute(ship,waypoints,false,()=>{
       const result=dockShip(this.state,ship);
       if(result!=='docked'){
@@ -594,6 +603,7 @@ export class FlightScene extends Phaser.Scene {
         this.announce('PARKED · BAY '+String((ship.berth??0)+1).padStart(2,'0'));
       });
     });
+    });
   }
 
   private beginLaunching():void {
@@ -605,6 +615,10 @@ export class FlightScene extends Phaser.Scene {
     this.setViewMode('transition');
     this.announce('UNDOCKING · RELEASE CLAMPS');
     const port=dockingPort(this.state);
+    // Begin with the wide ship overview, then smoothly dolly INTO the berth
+    // before the vessel moves. The old version jumped straight to a closeup.
+    this.animateCameraTo({x:ship.x,y:ship.y},
+      Math.min(this.flightZoom(),.93*this.deviceScale()),1050,()=>{
     this.flyRoute(ship,departureRoute(ship,port),true,()=>{
       launchShip(ship);
       // Align the launch result with the actual expanded airlock, not the
@@ -619,6 +633,7 @@ export class FlightScene extends Phaser.Scene {
       this.onStateChange();
       this.saving();
       this.announce('CLEAR OF MOTHERSHIP · MANUAL CONTROL');
+    });
     });
   }
 
