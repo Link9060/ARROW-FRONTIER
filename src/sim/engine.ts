@@ -60,6 +60,7 @@ export function dockShip(state: GameState, ship: Ship): DockResult {
   const position = berthWorldPosition(ship);
   ship.x = position.x;
   ship.y = position.y;
+  ship.angle = -Math.PI / 2;
   depositCargo(state, ship);
   return 'docked';
 }
