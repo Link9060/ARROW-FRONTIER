@@ -1,5 +1,7 @@
 export type Ore = 'iron' | 'copper';
 export type ShipMode = 'manual' | 'auto' | 'hold';
+/** Long-lived orders are separate from which vessel the player is piloting. */
+export type FleetOrder = 'mine' | 'return' | 'hold';
 export type RoomType = 'command' | 'reactor' | 'storage' | 'hangar' | 'refinery' | 'fabricator';
 export interface Point { x: number; y: number; }
 export interface Cargo { iron: number; copper: number; }
@@ -20,6 +22,10 @@ export interface Ship extends Point {
   cargo: Cargo;
   docked: boolean;
   mode: ShipMode;
+  /** Optional for v0.6.2 saves; legacy auto ships default to mining. */
+  order?: FleetOrder;
+  /** Seconds of dock-side unloading / turnaround before the next sortie. */
+  turnaround?: number;
   angle: number;
   upgrades: { mining: number; cargo: number };
   /** Starting slot in the mothership hangar when docked. */
@@ -97,14 +103,14 @@ export function makeNewGame(now = Date.now()): GameState {
         id: 'scout', name: 'ARROW-01', role: 'SCOUT / HYBRID',
         x: HOME.x - 240, y: HOME.y - 106, angle: -Math.PI / 2,
         capacity: 60, speed: 285, miningRate: 8,
-        cargo: { iron: 0, copper: 0 }, docked: true, berth: 0, mode: 'manual',
+        cargo: { iron: 0, copper: 0 }, docked: true, berth: 0, mode: 'manual', order: 'hold',
         upgrades: { mining: 0, cargo: 0 },
       },
       {
         id: 'miner', name: 'MINER-02', role: 'INDUSTRIAL MINER',
         x: HOME.x + 530, y: HOME.y - 770, angle: 0,
         capacity: 90, speed: 155, miningRate: 6,
-        cargo: { iron: 0, copper: 0 }, docked: false, mode: 'auto',
+        cargo: { iron: 0, copper: 0 }, docked: false, mode: 'auto', order: 'mine',
         upgrades: { mining: 0, cargo: 0 },
       },
     ],
