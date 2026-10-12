@@ -9,6 +9,10 @@ import { arrowOutline, FLAGSHIP_LENGTH } from '../sim/arrowGeometry';
 export interface MothershipArtwork {
   roof:Phaser.GameObjects.Container;
   interior:Phaser.GameObjects.Container;
+  doors:Phaser.GameObjects.Container;
+  doorLeft:Phaser.GameObjects.Container;
+  doorRight:Phaser.GameObjects.Container;
+  doorCenterX:number;
 }
 type XY=readonly [number,number];
 // Both sides come from the official ARROW mark, not an unrelated polygon.
@@ -248,5 +252,34 @@ export function buildMothershipArtwork(scene:Phaser.Scene,state:GameState,
   label(scene,roof,-155,3,'A R R O W',25,'#ededed');
   label(scene,roof,0,468,'MOTHERSHIP 01',12,'#b3b3b5');
 
-  return {roof,interior};
+  // A true two-leaf airlock sits ABOVE the opaque roof. Each armored half
+  // retracts sideways before the vessel enters. Both halves stay visible
+  // throughout the transition rather than teleporting out of existence.
+  const doors=scene.add.container(homeX,homeY).setDepth(29);
+  const doorCenterX=-115;
+  const createLeaf=(side:-1|1):Phaser.GameObjects.Container=>{
+    const leaf=scene.add.container(doorCenterX+side*29,doorY);
+    const panel=scene.add.graphics();
+    panel.fillStyle(0x333337,1);
+    panel.lineStyle(1.8,0xe0e0e2,.95);
+    panel.fillRoundedRect(-28,-17,56,34,3);
+    panel.strokeRoundedRect(-28,-17,56,34,3);
+    panel.lineStyle(1,0xb1b1b5,.5);
+    for(let j=0;j<3;j++){
+      const x=-17+j*13;
+      panel.lineBetween(x,-11,x,11);
+    }
+    // Closing seam and safety markings.
+    panel.lineStyle(2,0xffffff,.7);
+    panel.lineBetween(-side*28,-14,-side*28,14);
+    leaf.add(panel);
+    doors.add(leaf);
+    return leaf;
+  };
+  const doorLeft=createLeaf(-1);
+  const doorRight=createLeaf(1);
+  const docked=state.ships.some(ship=>ship.id===state.activeShipId&&ship.docked);
+  if(docked){doorLeft.x-=45;doorRight.x+=45;}
+  return {roof,interior,doors,doorLeft,doorRight,doorCenterX};
+}
 }
