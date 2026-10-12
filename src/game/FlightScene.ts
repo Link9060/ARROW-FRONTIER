@@ -4,7 +4,7 @@ import {
   nearestDeposit, switchShip,
 } from '../sim/engine';
 import { distance, DOCK_RADIUS, HOME, MINE_RANGE, WORLD } from '../sim/model';
-import { berthWorldPosition, findAvailableBerth, MOTHERSHIP } from '../sim/hangar';
+import { berthWorldPosition, findAvailableBerth } from '../sim/hangar';
 import { arrowOutline, hullSize, SHIP_ZONES } from '../sim/arrowGeometry';
 import { dockingRoute, departureRoute, inTractorStage, segmentDuration, shortestAngle } from '../sim/dockingRoute';
 import type { DockWaypoint } from '../sim/dockingRoute';
