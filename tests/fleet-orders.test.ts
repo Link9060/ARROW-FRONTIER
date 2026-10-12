@@ -29,7 +29,9 @@ describe('dispatchable RAVIN fleet missions',()=>{
     const previous=berthWorldPosition(miner);
     runAutomation(game,.2);
     expect(miner.docked).toBe(false);
-    expect(Math.hypot(miner.x-previous.x,miner.y-previous.y)).toBeGreaterThan(700);
+    expect(Math.hypot(miner.x-previous.x,miner.y-previous.y)).toBeGreaterThan(0);
+    expect(Math.hypot(miner.x-previous.x,miner.y-previous.y)).toBeLessThan(90);
+    expect(miner.navigation?.kind).toBe('launch');
     expect(activeShip(game).docked).toBe(true);
     expect(assignShipOrder(game,'scout','mine')).toBe('active-ship');
     expect(assignShipOrder(game,'nonexistent','mine')).toBe('not-found');
