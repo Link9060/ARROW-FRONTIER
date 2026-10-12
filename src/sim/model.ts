@@ -1,0 +1,89 @@
+export type Ore = 'iron' | 'copper';
+export type ShipMode = 'manual' | 'auto' | 'hold';
+
+export interface Point { x: number; y: number; }
+export interface Cargo { iron: number; copper: number; }
+
+export interface Asteroid extends Point {
+  id: string;
+  ore: Ore;
+  remaining: number;
+  size: number;
+}
+
+export interface Ship extends Point {
+  id: string;
+  name: string;
+  role: string;
+  capacity: number;
+  speed: number;
+  miningRate: number;
+  cargo: Cargo;
+  docked: boolean;
+  mode: ShipMode;
+  angle: number;
+}
+
+export interface GameState {
+  version: 1;
+  savedAt: number;
+  stored: Cargo;
+  storageCapacity: number;
+  activeShipId: string;
+  ships: Ship[];
+  asteroids: Asteroid[];
+  lifetimeMined: number;
+}
+
+export const WORLD = { width: 2600, height: 1800 };
+export const HOME: Point = { x: 1300, y: 900 };
+export const DOCK_RADIUS = 190;
+export const MINE_RANGE = 275;
+export const OFFLINE_CAP_SECONDS = 2 * 60 * 60;
+
+export function cargoTotal(cargo: Cargo): number {
+  return cargo.iron + cargo.copper;
+}
+
+export function distance(a: Point, b: Point): number {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+export function makeNewGame(now = Date.now()): GameState {
+  const asteroids: Asteroid[] = Array.from({ length: 27 }, (_, i) => {
+    const angle = i * 2.399963229728653;
+    const radius = 315 + ((i * 91) % 510);
+    return {
+      id: 'AST-' + String(i + 1).padStart(2, '0'),
+      ore: i % 3 === 0 ? 'copper' : 'iron',
+      x: HOME.x + Math.cos(angle) * radius,
+      y: HOME.y + Math.sin(angle) * radius,
+      size: 23 + ((i * 13) % 22),
+      remaining: 62 + ((i * 29) % 105),
+    };
+  });
+
+  return {
+    version: 1,
+    savedAt: now,
+    stored: { iron: 0, copper: 0 },
+    storageCapacity: 400,
+    activeShipId: 'scout',
+    ships: [
+      {
+        id: 'scout', name: 'ARROW-01', role: 'SCOUT / HYBRID',
+        x: HOME.x + 160, y: HOME.y + 12, angle: 0,
+        capacity: 60, speed: 285, miningRate: 8,
+        cargo: { iron: 0, copper: 0 }, docked: true, mode: 'manual',
+      },
+      {
+        id: 'miner', name: 'MINER-02', role: 'INDUSTRIAL MINER',
+        x: HOME.x + 220, y: HOME.y + 120, angle: 0,
+        capacity: 90, speed: 155, miningRate: 6,
+        cargo: { iron: 0, copper: 0 }, docked: false, mode: 'auto',
+      },
+    ],
+    asteroids,
+    lifetimeMined: 0,
+  };
+}
