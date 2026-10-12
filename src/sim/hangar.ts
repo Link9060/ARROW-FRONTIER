@@ -62,7 +62,7 @@ export function findAvailableBerth(state: GameState, ship: Ship): number | null 
 export function berthLocalPosition(index: number, span = 1): Point {
   const row = Math.floor(index / BERTH_COLUMNS);
   const col = index % BERTH_COLUMNS;
-  return { x: -225 + (col + (span - 1) / 2) * 145, y: -110 + row * 112 };
+  return { x: -225 + (col + (span - 1) / 2) * 145, y: -118 - row * 112 };
 }
 
 export function berthWorldPosition(ship: Ship): Point {
