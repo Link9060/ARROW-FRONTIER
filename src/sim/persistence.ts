@@ -1,4 +1,5 @@
-import { makeNewGame, ROOM_GRID, starterRooms, WORLD } from './model';
+import { HOME, makeNewGame, ROOM_GRID, starterRooms, WORLD } from './model';
+import { MOTHERSHIP, reconcileBerths } from './hangar';
 import type { Cargo, GameState, Resources, Room, RoomType, Ship } from './model';
 import { simulateOffline } from './engine';
 import { capacityFor } from './mothership';
@@ -99,7 +100,40 @@ function upgradeLegacy(old: Record<string, unknown>): GameState {
     nextRoomId: 5,
     refineryProgress: 0,
     lifetimeAlloy: 0,
+    worldRevision: undefined,
   };
+}
+
+/** Keep saves from earlier world scales, and clear obstructed asteroid positions. */
+function migrateWorldScale(state: GameState): boolean {
+  if (state.worldRevision === 4) return false;
+  // v0.1-v0.3 home position was (1300,900).
+  const dx = HOME.x - 1300;
+  const dy = HOME.y - 900;
+  for (const ship of state.ships) {
+    ship.x += dx;
+    ship.y += dy;
+    if (!ship.docked && Math.hypot(ship.x - HOME.x, ship.y - HOME.y) < 690) {
+      ship.x = MOTHERSHIP.departure.x + 20;
+      ship.y = MOTHERSHIP.departure.y;
+    }
+  }
+  for (let i = 0; i < state.asteroids.length; i++) {
+    const asteroid = state.asteroids[i];
+    asteroid.x += dx;
+    asteroid.y += dy;
+    const x = asteroid.x - HOME.x;
+    const y = asteroid.y - HOME.y;
+    const radius = Math.hypot(x, y);
+    if (radius < 750) {
+      const angle = radius > 0 ? Math.atan2(y, x) : i * 2.3999632;
+      const movedRadius = 800 + (i * 23) % 190;
+      asteroid.x = HOME.x + Math.cos(angle) * movedRadius;
+      asteroid.y = HOME.y + Math.sin(angle) * movedRadius;
+    }
+  }
+  state.worldRevision = 4;
+  return true;
 }
 
 export interface LoadResult { state: GameState; offlineSeconds: number; recovered: boolean; migrated: boolean; }
@@ -111,11 +145,13 @@ export function loadGame(now = Date.now()): LoadResult {
     const migrated = stored === null && validV1(decoded);
     const loaded = validV2(decoded) ? decoded : migrated ? upgradeLegacy(decoded as Record<string, unknown>) : null;
     if (loaded) {
+      const expandedWorld = migrateWorldScale(loaded);
+      reconcileBerths(loaded);
       loaded.storageCapacity = capacityFor(loaded.rooms);
       const seconds = simulateOffline(loaded, Math.max(0, (now - loaded.savedAt) / 1000));
       loaded.savedAt = now;
-      // Immediately write migrated data; old key is retained as a fallback backup.
-      if (migrated) saveGame(loaded, now);
+      // Commit the new coordinates and berth assignments without deleting old saves.
+      if (migrated || expandedWorld) saveGame(loaded, now);
       return { state: loaded, offlineSeconds: seconds, recovered: true, migrated };
     }
   } catch (error) {

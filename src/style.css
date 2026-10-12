@@ -326,3 +326,212 @@ body:has(.builder-overlay:not(.hidden)) .key-hints { opacity: 0; }
 @media (max-width: 900px) {
  .builder-secondary .room-palette { grid-template-columns: repeat(2,minmax(0,1fr)); }
 }
+
+
+/* ================================================================
+   FRONTIER 0.4 / CINEMATIC PHYSICAL MOTHERSHIP
+   Live interior artwork remains the canvas. Engineering is a drawer.
+   ================================================================ */
+#game, #game canvas {
+  touch-action: none;
+  overscroll-behavior: contain;
+}
+#game canvas { width: 100%; height: 100%; }
+.hangar-hud, .cinematic-status { display: none; }
+body[data-frontier-view="interior"] .hangar-hud {
+  display: block;
+  position: fixed;
+  z-index: 12;
+  top: 94px;
+  left: 22px;
+  width: 286px;
+  max-height: calc(100vh - 180px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  background: rgba(7, 14, 24, .92);
+  border: 1px solid #45637e;
+  box-shadow: 0 14px 52px #000a;
+  backdrop-filter: blur(16px);
+  padding: 22px;
+}
+.hangar-hud h2 {
+  font-size: 31px;
+  letter-spacing: -.06em;
+  font-weight: 600;
+  line-height: 1;
+  margin: 16px 0 25px;
+}
+.hangar-hud h2 span { display: block; color: #9cbad4; }
+.hangar-hud .eyebrow { color: #adc4d9; font-size: 10px; }
+.hangar-hud .data-row {
+  display:flex; align-items:center; justify-content:space-between; gap:9px;
+  border-bottom: 1px solid #283e53;
+  padding-bottom: 13px;
+  margin-bottom: 14px;
+  color:#9db1c6;
+  font:10px 'DM Mono',monospace;
+}
+.hangar-hud .data-row strong { text-align:right; color:#eff7ff; font-weight:500; font-size:11px; }
+.hangar-note {
+  color:#8da6bd;
+  font-size:12px;
+  line-height:1.7;
+  margin:17px 0 22px;
+}
+#hangar-build-btn { font-size:10px; margin:8px 0 11px; padding:13px 12px; }
+#hangar-launch-btn { width:100%; padding:15px 13px; font-size:10px; }
+.hangar-navigation-label {
+  color:#b9d2e7; font:10px 'DM Mono',monospace;
+  letter-spacing:.08em; padding-top:21px; margin:18px 0 10px;
+  border-top:1px solid #30485f;
+}
+.hangar-camera-controls { display:grid; grid-template-columns:50px 1fr 50px; gap:6px; }
+.hangar-camera-controls button {
+  border:1px solid #53748f; background:#152b40; color:#e4f3ff; padding:12px 6px;
+  font:12px 'DM Mono',monospace;
+}
+.hangar-camera-controls button:hover { background:#2c4a64; border-color:#d8edff; }
+.hangar-gesture-hint {
+  font:9px 'DM Mono',monospace; letter-spacing:.04em;
+  line-height:1.65; margin-top:11px; color:#8ca4b8;
+}
+body[data-frontier-view="interior"] .flight-panel,
+body[data-frontier-view="interior"] .flight-actions,
+body[data-frontier-view="interior"] .key-hints,
+body[data-frontier-view="interior"] .flight-signal,
+body[data-frontier-view="transition"] .flight-panel,
+body[data-frontier-view="transition"] .flight-actions,
+body[data-frontier-view="transition"] .key-hints,
+body[data-frontier-view="transition"] .flight-signal { display:none; }
+body[data-frontier-view="transition"] .cinematic-status {
+  display:block;
+  position:fixed;top:88px;left:50%;transform:translateX(-50%);
+  z-index:30;pointer-events:none;
+  background:#0a1a29df;border:1px solid #6588a8;
+  color:#d5edff;text-align:center;padding:12px 16px;
+  font:11px 'DM Mono',monospace;letter-spacing:.12em;
+  white-space:nowrap;max-width:calc(100vw - 30px);
+}
+body[data-frontier-view="interior"] .top-actions #builder-btn {
+  background:#20394f;border-color:#90b8d6;color:#f4faff;
+}
+body[data-frontier-view="interior"] .flight-signal { display:none; }
+body[data-frontier-view="interior"] .builder-overlay:not(.hidden) {
+  position:fixed;left:auto;right:18px;top:86px;bottom:65px;
+  width:min(400px, 32vw);max-width:none;z-index:24;
+  border-color:#5c809d;box-shadow:-20px 0 65px #000a;
+  padding:20px;overflow-y:auto;backdrop-filter:blur(20px);
+}
+body[data-frontier-view="interior"] .builder-overlay .builder-top { gap:10px; }
+body[data-frontier-view="interior"] .builder-overlay .builder-top h2 {
+  font-size:26px;line-height:1.03; margin:12px 0 9px;
+}
+body[data-frontier-view="interior"] .builder-overlay .builder-top p {
+  font-size:11px;line-height:1.6;
+}
+body[data-frontier-view="interior"] .builder-overlay .engineering-stats {
+  grid-template-columns:repeat(2,minmax(0,1fr));margin:16px 0;
+}
+body[data-frontier-view="interior"] .builder-overlay .engineering-stats > div { padding:10px; }
+body[data-frontier-view="interior"] .builder-overlay .engineering-stats strong { font-size:17px; }
+body[data-frontier-view="interior"] .builder-overlay .builder-workspace {
+  display:flex;flex-direction:column;gap:20px;
+}
+body[data-frontier-view="interior"] .builder-overlay .room-grid {
+  padding:7px;gap:4px;
+}
+body[data-frontier-view="interior"] .builder-overlay .module-cell { aspect-ratio:1.3; }
+body[data-frontier-view="interior"] .builder-overlay .module-symbol { font-size:10px; }
+body[data-frontier-view="interior"] .builder-overlay .room-palette {
+  grid-template-columns:repeat(2,minmax(0,1fr));
+}
+body[data-frontier-view="interior"] .builder-overlay .blueprint {
+  padding:9px;gap:5px;min-height:75px;
+}
+body[data-frontier-view="interior"] .builder-overlay .blueprint-title { font-size:11px; }
+body[data-frontier-view="interior"] .builder-overlay .blueprint-cost { font-size:9px;line-height:1.5; }
+body[data-frontier-view="interior"] .builder-overlay .builder-label {
+  font-size:10px;line-height:1.6;
+}
+body[data-frontier-view="interior"]:has(.builder-overlay:not(.hidden)) .hangar-hud {
+  opacity:.86;
+}
+@media (max-width: 1100px) {
+  body[data-frontier-view="interior"] .builder-overlay:not(.hidden) { width:min(375px,40vw); }
+}
+@media (max-width: 850px) {
+  body[data-frontier-view="interior"] .hangar-hud { width:218px;padding:14px;left:10px;top:71px; }
+  .hangar-hud h2 { font-size:25px; }
+  .hangar-hud .hangar-note { font-size:11px; }
+  body[data-frontier-view="interior"] .builder-overlay:not(.hidden) { width:min(345px,46vw);top:68px;right:8px;bottom:55px;padding:14px; }
+}
+@media (max-width: 650px) {
+  body[data-frontier-view="interior"] .hangar-hud {
+    top:auto;left:8px;bottom:53px;width:min(270px,calc(100vw - 16px));
+    max-height:42vh;padding:12px 13px;
+  }
+  body[data-frontier-view="interior"] .hangar-hud h2 { font-size:22px;margin:9px 0 12px; }
+  body[data-frontier-view="interior"] .hangar-hud .eyebrow { font-size:9px; }
+  body[data-frontier-view="interior"] .hangar-hud .data-row { margin-bottom:7px;padding-bottom:7px; }
+  body[data-frontier-view="interior"] .hangar-hud .hangar-note { display:none; }
+  body[data-frontier-view="interior"] #hangar-build-btn { margin:7px 0;padding:10px; }
+  body[data-frontier-view="interior"] #hangar-launch-btn { padding:10px; }
+  body[data-frontier-view="interior"] .hangar-navigation-label { margin:10px 0 7px;padding-top:10px; }
+  body[data-frontier-view="interior"] .hangar-camera-controls button { padding:8px 5px; }
+  body[data-frontier-view="interior"] .hangar-gesture-hint { font-size:8px;margin-top:7px; }
+  body[data-frontier-view="interior"] .builder-overlay:not(.hidden) {
+    top:auto;bottom:47px;left:auto;right:0;
+    width:100%;height:43vh;max-height:43vh;padding:13px 16px;
+    border-left:0;border-right:0;box-shadow:0 -17px 55px #000d;
+  }
+  body[data-frontier-view="interior"]:has(.builder-overlay:not(.hidden)) .hangar-hud { display:none; }
+  body[data-frontier-view="transition"] .cinematic-status {
+    top:70px;font-size:9px;white-space:normal;width:90%;
+  }
+}
+
+
+/* Touchscreen interior: keep the ship visible above a compact command shelf. */
+.hangar-navigation-label { display:flex;justify-content:space-between;gap:10px; }
+.hangar-navigation-label strong { font-weight:500;color:#eff7ff; }
+@media (max-width:650px) {
+  body[data-frontier-view="interior"] .hangar-hud {
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    align-items:center;
+    gap:7px;
+    bottom:53px;
+    padding:10px;
+    width:calc(100vw - 16px);
+    max-height:176px;
+    overflow:hidden;
+  }
+  body[data-frontier-view="interior"] .hangar-hud .eyebrow,
+  body[data-frontier-view="interior"] .hangar-hud h2,
+  body[data-frontier-view="interior"] .hangar-hud .data-row,
+  body[data-frontier-view="interior"] .hangar-hud .hangar-note,
+  body[data-frontier-view="interior"] .hangar-hud .hangar-gesture-hint {
+    display:none;
+  }
+  body[data-frontier-view="interior"] #hangar-build-btn,
+  body[data-frontier-view="interior"] #hangar-launch-btn {
+    margin:0;
+    min-height:42px;
+    padding:8px 7px;
+    font-size:9px;
+    line-height:1.2;
+    min-width:0;
+  }
+  body[data-frontier-view="interior"] .hangar-navigation-label {
+    grid-column:1/-1;
+    padding:5px 2px 0;
+    margin:0;
+    font-size:9px;
+    border:0;
+  }
+  body[data-frontier-view="interior"] .hangar-camera-controls {
+    grid-column:1/-1;
+    grid-template-columns:44px 1fr 44px;
+  }
+  body[data-frontier-view="interior"] .hangar-camera-controls button { padding:8px; }
+}

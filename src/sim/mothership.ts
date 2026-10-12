@@ -11,13 +11,13 @@ export interface ModuleSpec {
 }
 export const MODULES: Record<RoomType, ModuleSpec> = {
   command: { title: 'Command Bridge', code: 'CMD', description: 'Fleet operations and navigation', cost: { iron: 0, copper: 0, alloy: 0 }, draw: 3, priority: 0 },
-  hangar: { title: 'Main Hangar', code: 'HGR', description: 'Stores and launches ships', cost: { iron: 0, copper: 0, alloy: 0 }, draw: 3, priority: 1 },
+  hangar: { title: 'Expandable Hangar', code: 'HGR', description: '+4 docking spaces per room level; bigger ships use multiple spaces', cost: { iron: 46, copper: 24, alloy: 2 }, draw: 3, priority: 1 },
   storage: { title: 'Cargo Warehouse', code: 'STO', description: '+200 cargo capacity per room', cost: { iron: 22, copper: 8, alloy: 0 }, draw: 1, priority: 2 },
   reactor: { title: 'Fusion Reactor', code: 'PWR', description: '+22 power generation per reactor', cost: { iron: 34, copper: 14, alloy: 0 }, draw: 0, priority: 0 },
   refinery: { title: 'Ore Refinery', code: 'REF', description: '2 iron + 1 copper → 1 alloy / 4 seconds', cost: { iron: 28, copper: 18, alloy: 0 }, draw: 8, priority: 3 },
   fabricator: { title: 'Ship Fabricator', code: 'FAB', description: 'Unlocks mining and cargo upgrades', cost: { iron: 44, copper: 22, alloy: 4 }, draw: 7, priority: 4 },
 };
-export const BUILDABLE: RoomType[] = ['storage', 'reactor', 'refinery', 'fabricator'];
+export const BUILDABLE: RoomType[] = ['storage', 'reactor', 'refinery', 'fabricator', 'hangar'];
 const DEFAULT_CAPACITY = 200;
 const MAX_LEVEL = 3;
 

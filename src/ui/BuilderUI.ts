@@ -60,7 +60,7 @@ export class BuilderUI {
   get isOpen(): boolean { return this.visible; }
   open(): void {
     if (this.visible) return;
-    if (!canEnterInterior(this.state)) {
+    if (document.body.dataset.frontierView === 'transition' || !canEnterInterior(this.state)) {
       this.notice('DOCK YOUR ACTIVE SHIP TO ACCESS MOTHERSHIP INTERIOR');
       return;
     }

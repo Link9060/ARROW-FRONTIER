@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
   <meta name="theme-color" content="#05080d"/>
   <meta name="description" content="ARROW: FRONTIER. Pilot, mine, build and command a persistent fleet."/>
-  <title>ARROW: FRONTIER | v0.3</title>
+  <title>ARROW: FRONTIER | Cinematic Hangar</title>
 </head>
 <body>
 <div id="app">
@@ -15,7 +15,7 @@
   <header class="topbar">
     <div class="brand">
       <span class="brand-icon" aria-hidden="true">◇</span>
-      <span class="brand-word"><strong>ARROW</strong><em>FRONTIER <span class="version">/ 0.3.0</span></em></span>
+      <span class="brand-word"><strong>ARROW</strong><em>FRONTIER <span class="version">/ 0.4.0</span></em></span>
     </div>
     <div class="sector"><span class="sector-dot"></span> PRIVATE UNIVERSE <span class="separator">/</span> VESTA EXPANSE</div>
     <nav class="top-actions" aria-label="Game screens">
@@ -59,9 +59,27 @@
     <span><kbd>CLICK / SPACE</kbd> MINE</span><span><kbd>Q</kbd> SWITCH SHIP</span>
     <span><kbd>E</kbd> LAUNCH / DOCK</span>
   </div>
+  <section id="hangar-hud" class="hangar-hud" aria-label="Mothership hangar information">
+    <div class="eyebrow">MOTHERSHIP / HANGAR DECK 01</div>
+    <h2>WELCOME <span>ABOARD.</span></h2>
+    <div class="data-row"><span>SELECTED VESSEL</span><strong id="hangar-active-ship">ARROW-01</strong></div>
+    <div class="data-row"><span>PARKING BERTH</span><strong id="hangar-active-berth">01</strong></div>
+    <div class="data-row"><span>HANGAR CAPACITY</span><strong id="hangar-occupancy">1 / 4 SPACES</strong></div>
+    <p class="hangar-note">Your mothership is a real space. Ships occupy their own marked berths, and expanding the hangar opens more parking.</p>
+    <button id="hangar-build-btn" class="link-action" type="button">ENGINEERING / BUILD ROOMS <span>↗</span></button>
+    <button id="hangar-launch-btn" class="primary" type="button">LAUNCH SELECTED SHIP <span>↗</span></button>
+    <div class="hangar-navigation-label">CAMERA / TWO FINGERS <strong id="hangar-camera-zoom">100%</strong></div>
+    <div class="hangar-camera-controls" aria-label="Interior navigation">
+      <button type="button" id="zoom-out-btn" aria-label="Zoom out of mothership">−</button>
+      <button type="button" id="recenter-btn" aria-label="Recenter mothership camera">RECENTER</button>
+      <button type="button" id="zoom-in-btn" aria-label="Zoom in on mothership">+</button>
+    </div>
+    <div class="hangar-gesture-hint">TWO-FINGER DRAG TO PAN · PINCH TO ZOOM</div>
+  </section>
+  <div id="cinematic-status" class="cinematic-status" aria-live="polite"></div>
   <div id="toast" role="status" aria-live="polite"></div>
   <footer class="footer">
-    <span>ARROW / SIMULATION 0.3</span><span id="mission-text">AWAITING FLIGHT COMMAND</span>
+    <span>ARROW / SIMULATION 0.4</span><span id="mission-text">AWAITING FLIGHT COMMAND</span>
     <button id="reset-btn" class="reset" type="button">RESET SAVE</button>
   </footer>
 
@@ -94,11 +112,11 @@
     </div>
   </section>
 
-  <section id="builder-overlay" class="builder-overlay hidden" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="builder-title">
+  <section id="builder-overlay" class="builder-overlay hidden" role="dialog" aria-modal="false" aria-hidden="true" aria-labelledby="builder-title">
     <div class="builder-top">
       <div><div class="eyebrow">03 / DOCKED / MOTHERSHIP INTERIOR</div>
       <h2 id="builder-title">MOTHERSHIP <span>INTERIOR.</span></h2>
-      <p>Only accessible while docked. Connect rooms, balance the power grid, and expand your civilization.</p></div>
+      <p>Build rooms alongside the live interior. Pan with two fingers and pinch to zoom, even while engineering is open.</p></div>
       <button type="button" class="builder-close" id="builder-close" aria-label="Exit mothership interior">✕</button>
     </div>
     <div class="engineering-stats">
@@ -141,7 +159,7 @@
       <h2>YOUR UNIVERSE.<br/><span>YOUR FRONTIER.</span></h2>
       <p>Pilot the fleet. Mine the stars. Dock and step inside your mothership to build something bigger.</p>
       <button id="start-btn" class="primary start-btn" type="button">ENTER FRONTIER <span>↗</span></button>
-      <small>V 0.3.0 / PRIVATE UNIVERSE PROTOTYPE</small>
+      <small>V 0.4.0 / CINEMATIC DOCKING</small>
     </div>
   </div>
 </div>

@@ -9,6 +9,16 @@
 
 > This README is a **design specification**, not a statement that these systems are already implemented. Sections distinguish **agreed direction**, **proposed implementation**, and **open decisions**. Numbers and sample names are placeholders for balancing.
 
+## v0.4 · Cinematic Hangar & Ship-Scale Navigation
+
+**Playable improvement:** FRONTIER now has a vastly larger arrow-shaped mothership with a real, detailed hangar. Your piloted vessel approaches an upper airlock, the opaque roof fades into a cutaway, the ship slides into its own size-compatible parking berth and the camera zooms out to reveal the mothership interior. Launching reverses the physical transition. Other docked ships occupy separate marked bays. Expanding or upgrading the hangar adds parking capacity, with larger classes requiring multiple adjacent berth units.
+
+**Touch and trackpad:** Two-finger drag pans across the interior; pinch zooms in/out. Trackpad scroll pans and pinch zooms. A three-button zoom/recenter control provides precise alternatives. Engineering is a side drawer that leaves the physical interior visible.
+
+**Save compatibility:** The game migrates older world coordinates and docked ships into the enlarged physical mothership without resetting progression. All AI/autonomous fleet work remains deterministic and **uses no real RAVIN model API calls**.
+
+See [v0.4 cinematic docking notes](docs/CINEMATIC-DOCKING-V04.md). This remains an early single-player browser prototype, not the planned multiplayer space sandbox.
+
 ## v0.3 · Visual & Gameplay Refinement
 
 **Released direction:** Sharper Retina/high-density canvas rendering, a larger opaque arrow-shaped mothership exterior, a compact Flight HUD, separate Fleet Command (C), and a mothership Interior screen (B) **only while the controlled ship is docked**. Primary launch and dock controls remain visible. The game simulation advances with elapsed time, keeping refining and fleet missions consistent at low frame rates. New automated tests cover frame-rate consistency and interior permissions.

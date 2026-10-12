@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { advanceActiveSimulation, activeShip, dockShip, launchShip, switchShip } from '../src/sim/engine';
 import { canEnterInterior, buildRoom } from '../src/sim/mothership';
-import { DOCK_RADIUS, HOME, makeNewGame } from '../src/sim/model';
+import { distance, DOCK_RADIUS, HOME, makeNewGame } from '../src/sim/model';
 
 describe('v0.3 visual and gameplay safety', () => {
   it('requires controlled ship to dock before entering interior mode', () => {
@@ -9,7 +9,7 @@ describe('v0.3 visual and gameplay safety', () => {
     expect(canEnterInterior(game)).toBe(true);
     expect(launchShip(activeShip(game))).toBe(true);
     expect(canEnterInterior(game)).toBe(false);
-    expect(activeShip(game).x).toBeGreaterThan(HOME.x + DOCK_RADIUS);
+    expect(distance(activeShip(game), HOME)).toBeGreaterThan(DOCK_RADIUS);
     expect(dockShip(game, activeShip(game))).toBe('too-far');
     activeShip(game).x = HOME.x + DOCK_RADIUS - 15;
     activeShip(game).y = HOME.y;

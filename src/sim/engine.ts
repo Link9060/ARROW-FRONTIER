@@ -4,8 +4,9 @@ import {
 } from './model';
 import type { Asteroid, GameState, Ship } from './model';
 import { runIndustry } from './mothership';
+import { berthWorldPosition, findAvailableBerth, MOTHERSHIP } from './hangar';
 
-export type DockResult = 'docked' | 'too-far' | 'already-docked';
+export type DockResult = 'docked' | 'too-far' | 'already-docked' | 'hangar-full';
 
 export function activeShip(state: GameState): Ship {
   const ship = state.ships.find((item) => item.id === state.activeShipId);
@@ -28,8 +29,9 @@ export function launchShip(ship: Ship): boolean {
   if (!ship.docked) return false;
   ship.docked = false;
   // Launch outside the physical mothership hull, not inside its exterior.
-  ship.x = HOME.x + 314;
-  ship.y = HOME.y + 15;
+  ship.berth = undefined;
+  ship.x = MOTHERSHIP.departure.x;
+  ship.y = MOTHERSHIP.departure.y;
   ship.angle = 0;
   return true;
 }
@@ -51,9 +53,13 @@ export function depositCargo(state: GameState, ship: Ship): number {
 export function dockShip(state: GameState, ship: Ship): DockResult {
   if (ship.docked) return 'already-docked';
   if (distance(ship, HOME) > DOCK_RADIUS) return 'too-far';
+  const berth = findAvailableBerth(state, ship);
+  if (berth === null) return 'hangar-full';
   ship.docked = true;
-  ship.x = HOME.x + 160;
-  ship.y = HOME.y + 14;
+  ship.berth = berth;
+  const position = berthWorldPosition(ship);
+  ship.x = position.x;
+  ship.y = position.y;
   depositCargo(state, ship);
   return 'docked';
 }
@@ -109,8 +115,9 @@ export function runAutomation(state: GameState, seconds: number): void {
     const target = nearestDeposit(state, ship);
     if (full || !target || storedTotal(state.stored) >= state.storageCapacity) {
       if (travel(ship, HOME, seconds, DOCK_RADIUS - 10)) {
-        dockShip(state, ship);
-        if (storedTotal(state.stored) >= state.storageCapacity || !target) ship.mode = 'hold';
+        const result = dockShip(state, ship);
+        if (result === 'hangar-full') ship.mode = 'hold';
+        else if (storedTotal(state.stored) >= state.storageCapacity || !target) ship.mode = 'hold';
       }
       continue;
     }
