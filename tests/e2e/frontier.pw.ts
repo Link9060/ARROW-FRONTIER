@@ -96,7 +96,9 @@ test('upgraded saved mothership stays readable and never stretches launch status
   await page.goto('/');
   await page.locator('#start-btn').click();
   await page.locator('#save-toggle').click();
-  await page.evaluate(()=>{
+  // Inject on the NEXT document before Vite initializes. The previous
+  // document's pagehide autosave otherwise overwrites test mutations.
+  await page.addInitScript(()=>{
     const key='arrow-frontier-expansion-v2';
     const json=localStorage.getItem(key);
     if(!json)throw new Error('Expected starter save');
