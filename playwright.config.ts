@@ -3,7 +3,9 @@ import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
   testDir:'tests/e2e',
   testMatch:'**/*.pw.ts',
-  timeout:45_000,
+  // Cinematic docking plus screenshots can exceed 45 seconds on CI's
+  // software-rendered Chromium. Individual gameplay assertions keep bounds.
+  timeout:100_000,
   expect:{timeout:10_000},
   retries:process.env.CI?1:0,
   workers:process.env.CI?1:undefined,
