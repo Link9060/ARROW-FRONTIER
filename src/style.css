@@ -172,3 +172,146 @@ body:has(.builder-overlay:not(.hidden)) .panel { pointer-events: none; opacity: 
   .top-actions { gap: 6px; }
   .builder-trigger { font-size: 9px; }
 }
+
+
+/* =============================================================
+ * FRONTIER v0.3: information hierarchy, readable UI, dock-only
+ * interior and compact persistent controls.
+ * ============================================================= */
+:root { --frontier-bg: #060b12; --frontier-panel: rgba(9, 17, 28, .94); --frontier-border: #354c62; }
+body { background: #04080d; }
+.topbar { height: 72px; padding: 0 24px; gap: 20px; background: linear-gradient(180deg, rgba(5,10,17,.98), rgba(5,10,17,.88)); border-bottom-color: rgba(153,185,212,.2); }
+.brand { min-width: 223px; gap: 12px; }
+.brand-icon { font-size: 38px; line-height: .8; }
+.brand strong { font-size: 15px; letter-spacing: .22em; }
+.brand em { font-size: 10px; margin-top: 8px; letter-spacing: .14em; }
+.top-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: nowrap; gap: 8px; }
+.top-actions .ghost { padding: 13px 16px; min-height: 43px; background: #0c1724; font-size: 11px; letter-spacing: .06em; }
+.top-actions .ghost span { opacity: .7; margin-left: 14px; }
+.top-actions .ghost:hover, .top-actions .ghost.is-active,
+.top-actions .ghost.available:hover { background: #1c344c; border-color: #aecbe4; color: white; }
+.top-actions #builder-btn[aria-disabled="true"] { color: #7a8a9b; }
+.sector { display: block; white-space: nowrap; font-size: 11px; letter-spacing: .09em; color: #9cb4cb; }
+.sector-dot { display:inline-block; width: 6px; height: 6px; background: #d1e5f8; border-radius:50%; margin-right: 9px; box-shadow: 0 0 10px #8dbcf25c; }
+.flight-panel { position: fixed; z-index: 8; top: 94px; left: 22px; width: 302px; max-height: calc(100vh - 265px); padding: 22px 23px 19px; background: var(--frontier-panel); border: 1px solid var(--frontier-border); box-shadow: 0 18px 55px #0007; backdrop-filter: blur(18px); overflow-y: auto; scrollbar-width: thin; scrollbar-color: #476079 transparent; }
+.panel-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.flight-panel .eyebrow { font-size: 10px; letter-spacing: .12em; color: #93a9bf; }
+.ship-status { display: inline-flex; align-items: center; gap: 6px; background: #173149; color: #bce2f7; padding: 6px 8px; border: 1px solid #4b718e; font: 9px 'DM Mono',monospace; letter-spacing: .04em; white-space: nowrap; }
+.ship-heading { display: flex; align-items: center; gap: 16px; padding: 21px 0 12px; }
+.ship-glyph { color: #dceeff; font-size: 27px; transform: rotate(-32deg); line-height: 1; }
+.ship-heading h1 { font-size: 25px; margin: 0; line-height: 1.1; font-weight: 600; letter-spacing: -.035em; }
+.ship-type { font: 11px 'DM Mono',monospace; letter-spacing: .07em; color: #8faac3; margin-top: 7px; }
+.panel-divider { height: 1px; width: 100%; background: #32465b; margin: 13px 0; }
+.flight-panel .data-row, .command-block .data-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin: 16px 0 11px; font: 11px 'DM Mono',monospace; color: #91a7bb; }
+.flight-panel .data-row strong, .command-block .data-row strong { color: #e6f3ff; font-size: 11px; font-weight: 500; text-align: right; }
+.flight-panel .storage-track { height: 5px; margin: 3px 0 12px; }
+.cargo-split { display: flex; justify-content: space-between; color: #9fb3c7; font: 10px 'DM Mono',monospace; }
+.cargo-split strong { color: #f0f8ff; font-size: 12px; margin-left: 5px; }
+.panel-tip { color: #aec2d6; font-size: 12px; line-height: 1.7; min-height: 38px; }
+.link-action { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; padding: 13px 15px; margin-top: 17px; border: 1px solid #6a8ba9; background: #122638; color: #e3f2ff; font: 11px 'DM Mono',monospace; letter-spacing: .05em; text-align:left; }
+.link-action:hover { background: #21415c; border-color: #c9e4fb; }
+.flight-signal { z-index: 3; pointer-events: none; position: fixed; right: 26px; top: 96px; display: flex; align-items: center; gap: 12px; font: 10px 'DM Mono',monospace; color: #8da9c4; letter-spacing: .14em; }
+.signal-cross { font-size: 19px; line-height: 1; color: #bfd8ef; }
+.flight-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; position: fixed; z-index: 10; bottom: 74px; left: 22px; width: 302px; padding: 0; }
+.flight-actions button { min-height: 50px; padding: 12px; font-size: 10px; gap: 7px; line-height: 1.35; }
+.flight-actions .secondary.ready { border-color: #d8edff; background: #21384e; }
+.key-hints { position: fixed; bottom: 76px; right: 25px; z-index: 3; display: flex; flex-wrap: wrap; align-items: center; justify-content: end; gap: 8px 17px; max-width: calc(100vw - 360px); color: #9bb1c7; font: 10px 'DM Mono',monospace; letter-spacing: .05em; pointer-events: none; }
+.key-hints span { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+.key-hints kbd { border: 1px solid #49647c; background: #0d1d2a; min-width: 0; padding: 6px 7px; font-size: 10px; color: #e2effe; }
+.footer { height: 52px; padding: 0 22px; border-top-color: #263d52; font-size: 10px; background: #050a11ee; }
+.footer #mission-text { color: #c0d7ec; font-size: 10px; }
+#toast { font-size: 11px; letter-spacing: .05em; z-index: 55; }
+.command-overlay { position: fixed; z-index: 19; top: 88px; right: 22px; bottom: 65px; left: 342px; background: linear-gradient(145deg,#101f30f9,#07111dfc); border: 1px solid #62829f; box-shadow: 0 19px 70px #000c; padding: 30px; overflow-y: auto; scrollbar-color: #42617e transparent; }
+.command-overlay.hidden { display: none; }
+.overlay-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; padding-bottom: 24px; border-bottom: 1px solid #314b63; }
+.overlay-header h2 { font-size: clamp(34px, 4vw, 53px); font-weight: 600; letter-spacing: -.065em; margin: 15px 0 12px; line-height: 1; }
+.overlay-header h2 span { color: #9ab4cb; }
+.overlay-header p { max-width: 550px; font-size: 13px; line-height: 1.65; color: #93adc5; margin: 0; }
+.overlay-close { width: 44px; height: 44px; flex-shrink: 0; background: #13263a; color: #e5f2ff; border: 1px solid #587996; font: 22px 'DM Mono',monospace; }
+.overlay-close:hover { background: #284562; }
+.command-content { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 18px; margin-top: 24px; }
+.command-block { background: #0b1726; border: 1px solid #2f485e; padding: 23px; min-width: 0; }
+.block-heading { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; font: 10px 'DM Mono',monospace; color: #e7f4ff; letter-spacing: .05em; padding-bottom: 16px; margin-bottom: 12px; border-bottom: 1px solid #30465c; }
+.block-heading strong { font-weight: 500; }
+.block-heading span { font-size: 9px; color: #7896b0; }
+.command-block .storage-track { height: 6px; }
+.inventory-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; margin: 19px 0; }
+.inventory-grid > div { padding: 13px 10px; border: 1px solid #35506a; background: #102235; }
+.inventory-grid small { display: block; color: #8da8c2; font: 9px 'DM Mono',monospace; line-height: 1.3; white-space: nowrap; }
+.inventory-grid strong { display:block; color: #eff7ff; font-size: 20px; font-weight: 500; padding-top: 11px; }
+.command-block .power-data { padding-top: 15px; border-top: 1px solid #30465c; }
+.command-block .fleet { gap: 10px; }
+.command-block .fleet-ship { padding: 16px; min-height: 70px; border-color: #36536c; background: #132438; }
+.command-block .fleet-ship.selected { background: #223c53; border-color: #b4d4ee; }
+.command-block .fleet-name { display: block; font: 15px 'Space Grotesk',sans-serif; color: #edf7ff; }
+.command-block .fleet-role { display: block; font: 10px 'DM Mono',monospace; margin-top: 7px; color: #8aa6bd; }
+.command-block .fleet-state { font-size: 10px; }
+.block-note { margin: 12px 0 0; font-size: 12px; line-height: 1.65; color: #7895ac; }
+.command-block #fleet-resume { margin-top: 13px; }
+.builder-overlay { left: 22px; top: 87px; right: 22px; bottom: 65px; max-width: unset; padding: 28px 32px; }
+.builder-top h2 { font-size: clamp(35px,3.5vw,52px); }
+.builder-top .eyebrow, .builder-label { font-size: 11px; }
+.builder-top p { font-size: 13px; }
+.builder-workspace { grid-template-columns: minmax(380px, 1.2fr) minmax(270px,.8fr); }
+.room-grid { gap: 7px; padding: 17px; }
+.module-symbol { font-size: 14px; }
+.module-level { font-size: 10px; }
+.blueprint-title { font-size: 13px; }
+.blueprint-cost, .detail-info { font-size: 11px; }
+.detail-copy { font-size: 13px; }
+.builder-secondary .resource { font-size: 12px; }
+body:has(.command-overlay:not(.hidden)) .flight-panel,
+body:has(.builder-overlay:not(.hidden)) .flight-panel { opacity: .25; pointer-events: none; }
+body:has(.command-overlay:not(.hidden)) .flight-actions,
+body:has(.builder-overlay:not(.hidden)) .flight-actions { opacity: .25; pointer-events: none; }
+body:has(.command-overlay:not(.hidden)) .key-hints,
+body:has(.builder-overlay:not(.hidden)) .key-hints { opacity: 0; }
+@media (max-width: 1150px) {
+  .sector { display: none; }
+  .command-overlay { left: 22px; }
+}
+@media (max-width: 900px) {
+  .command-content { grid-template-columns: 1fr; }
+  .builder-workspace { grid-template-columns: 1fr; }
+  .key-hints { max-width: calc(100vw - 330px); }
+}
+@media (max-width: 700px) {
+  .topbar { height: 60px; padding: 0 11px; gap: 7px; }
+  .brand { min-width: 0; gap: 8px; }
+  .brand-icon { font-size: 29px; }
+  .brand strong { font-size: 12px; }
+  .brand em { font-size: 8px; margin-top: 5px; }
+  .top-actions { gap: 4px; }
+  .top-actions .ghost { min-height: 35px; padding: 9px 8px; font-size: 9px; }
+  .top-actions .ghost span { display: none; }
+  .top-actions #save-btn { display: none; }
+  .flight-panel { top: 70px; left: 9px; padding: 13px 14px; width: min(258px, 66vw); max-height: calc(100vh - 185px); }
+  .panel-heading .eyebrow { font-size: 9px; }
+  .ship-status { font-size: 8px; padding: 4px; }
+  .ship-heading { padding: 13px 0 8px; }
+  .ship-heading h1 { font-size: 20px; }
+  .ship-type { font-size: 9px; }
+  .flight-panel .data-row { margin: 12px 0 8px; font-size: 9px; }
+  .flight-panel .data-row strong { font-size: 9px; }
+  .cargo-split { font-size: 9px; }
+  .panel-tip { font-size: 11px; }
+  .flight-panel .link-action { font-size: 9px; }
+  .flight-signal { display: none; }
+  .flight-actions { left: 9px; bottom: 58px; width: min(340px, calc(100vw - 18px)); gap: 5px; }
+  .flight-actions button { min-height: 43px; font-size: 9px; }
+  .key-hints { display: none; }
+  .footer { height: 45px; padding: 0 10px; }
+  .footer > span:first-child { display: none; }
+  .footer #mission-text { font-size: 8px; letter-spacing: 0; max-width: 75%; }
+  .footer .reset { font-size: 9px; }
+  .command-overlay, .builder-overlay { top: 61px; right: 0; bottom: 46px; left: 0; padding: 17px; }
+  .command-block { padding: 16px; }
+  .overlay-header h2 { font-size: 35px; }
+  .overlay-header p { font-size: 12px; }
+  .room-grid { gap: 4px; padding: 8px; }
+  .module-symbol { font-size: 11px; }
+  .module-level { font-size: 8px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .flight-panel, .command-overlay, .builder-overlay { transition: none; }
+}
