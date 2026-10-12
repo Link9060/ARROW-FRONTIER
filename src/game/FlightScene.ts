@@ -58,7 +58,7 @@ export class FlightScene extends Phaser.Scene {
   /** Keep ship proportions fixed in CSS pixels on standard and Retina displays. */
   refreshCameraZoom(): void {
     const dpr = Math.min(2, Math.max(1, window.devicePixelRatio || 1));
-    const zoom = window.innerWidth < 720 ? 1.05 : window.innerWidth < 1100 ? 1.18 : 1.34;
+    const zoom = window.innerWidth < 720 ? 0.82 : window.innerWidth < 1100 ? 1.18 : 1.34;
     this.cameras.main.setZoom(zoom * dpr);
   }
 
