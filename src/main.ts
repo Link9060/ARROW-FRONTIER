@@ -6,6 +6,8 @@ import { cargoTotal, distance, DOCK_RADIUS, HOME, storedTotal } from './sim/mode
 import { powerReport } from './sim/mothership';
 import { loadGame, resetGame, saveGame } from './sim/persistence';
 import { BuilderUI } from './ui/BuilderUI';
+import type { ViewMode } from './game/FlightScene';
+import { dockedBerthCount, hangarCapacity } from './sim/hangar';
 
 const loaded = loadGame();
 const state = loaded.state;
@@ -32,7 +34,18 @@ let started = false;
 let commandOpen = false;
 
 // Build the whole UI before Phaser starts and invokes scene.create().
-const scene = new FlightScene(state, updatePanel, notice, () => persist());
+const scene = new FlightScene(state, updatePanel, notice, () => persist(), (view: ViewMode) => {
+  document.body.dataset.frontierView = view;
+  const status = byId('cinematic-status');
+  if (view === 'transition') {
+    status.textContent = 'DOCKING / FLIGHT TRANSITION IN PROGRESS';
+    status.classList.add('visible');
+  } else {
+    status.classList.remove('visible');
+    status.textContent = '';
+  }
+  updatePanel();
+});
 const builder = new BuilderUI(state, () => {
   scene.drawMothership();
   updatePanel();
@@ -69,7 +82,14 @@ function updatePanel(): void {
   byId('ship-name').textContent = ship.name;
   byId('ship-class').textContent = ship.role;
   byId('ship-state').textContent = ship.docked ? 'DOCKED' : 'IN FLIGHT';
-  byId('ship-position').textContent = ship.docked ? 'MOTHERSHIP HANGAR' : Math.round(nearestHome) + ' UNITS FROM HOME';
+  byId('ship-position').textContent = ship.docked
+    ? 'HANGAR / BAY ' + String((ship.berth ?? 0) + 1).padStart(2, '0')
+    : Math.round(nearestHome) + ' UNITS FROM HOME';
+  byId('hangar-active-ship').textContent = ship.name;
+  byId('hangar-active-berth').textContent = ship.docked
+    ? String((ship.berth ?? 0) + 1).padStart(2, '0') : 'IN FLIGHT';
+  byId('hangar-occupancy').textContent = dockedBerthCount(state) + ' / ' +
+    hangarCapacity(state) + ' SPACES';
   byId('cargo').textContent = roundCargo(aboard) + ' / ' + ship.capacity;
   byId('cargo-fill').style.width = Math.min(100, 100 * aboard / ship.capacity) + '%';
   byId('ship-iron').textContent = roundCargo(ship.cargo.iron);
@@ -91,17 +111,19 @@ function updatePanel(): void {
   byId('power-summary').textContent = power.load + ' / ' + power.output;
 
   const launch = byId<HTMLButtonElement>('launch-btn');
-  launch.disabled = !ship.docked;
+  launch.disabled = !ship.docked || scene.viewMode === 'transition';
   launch.innerHTML = ship.docked ? 'LAUNCH SHIP <span>↗</span>' : 'SHIP DEPLOYED <span>◇</span>';
   const dock = byId<HTMLButtonElement>('dock-btn');
-  dock.disabled = ship.docked;
+  dock.disabled = ship.docked || scene.viewMode === 'transition';
   dock.classList.toggle('ready', !ship.docked && closeEnough);
+  byId<HTMLButtonElement>('hangar-launch-btn').disabled = !ship.docked || scene.viewMode === 'transition';
   const interior = byId('builder-btn');
   interior.classList.toggle('available', ship.docked);
   interior.setAttribute('aria-disabled', String(!ship.docked));
   interior.title = ship.docked ? 'Enter mothership interior (B)' : 'Dock your active ship to enter the interior';
 
-  byId('mission-text').textContent = ship.docked ? 'MOTHERSHIP ONLINE  /  SHIP READY TO LAUNCH'
+  byId('mission-text').textContent = scene.viewMode === 'transition' ? 'HANGAR TRANSITION / AUTOPILOT ENGAGED'
+    : ship.docked ? 'MOTHERSHIP ONLINE  /  HANGAR DECK'
     : aboard >= ship.capacity - 0.001 ? 'CARGO FULL  /  RETURN TO HOME'
       : closeEnough ? 'DOCKING SIGNAL AVAILABLE' : 'LOCAL EXPEDITION  /  MINING ENABLED';
 
@@ -171,12 +193,23 @@ byId('start-btn').addEventListener('click', () => {
        Math.round(loaded.offlineSeconds / 60) + ' MINUTES OF OFFLINE PROGRESSION'
     : 'WELCOME TO FRONTIER  /  FIRST EXPEDITION READY');
 });
+function requestLaunchOrDock(): void {
+  if (!started || scene.viewMode === 'transition') return;
+  if (builder.isOpen) builder.close();
+  if (commandOpen) setCommandOpen(false);
+  scene.launchOrDock();
+}
 byId('launch-btn').addEventListener('click', () => {
-  if (activeShip(state).docked) scene.launchOrDock();
+  if (activeShip(state).docked) requestLaunchOrDock();
 });
 byId('dock-btn').addEventListener('click', () => {
-  if (!activeShip(state).docked) scene.launchOrDock();
+  if (!activeShip(state).docked) requestLaunchOrDock();
 });
+byId('hangar-launch-btn').addEventListener('click', () => requestLaunchOrDock());
+byId('hangar-build-btn').addEventListener('click', () => builder.open());
+byId('zoom-in-btn').addEventListener('click', () => scene.zoomInterior(1));
+byId('zoom-out-btn').addEventListener('click', () => scene.zoomInterior(-1));
+byId('recenter-btn').addEventListener('click', () => scene.recenterInterior());
 byId('command-btn').addEventListener('click', () => setCommandOpen(!commandOpen));
 byId('quick-command-btn').addEventListener('click', () => setCommandOpen(true));
 byId('command-close').addEventListener('click', () => setCommandOpen(false));
