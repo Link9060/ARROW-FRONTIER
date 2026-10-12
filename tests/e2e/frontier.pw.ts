@@ -9,11 +9,13 @@ test('real desktop flight, departure, side docking and interior controls', async
   await expect(page.locator('body')).toHaveAttribute('data-frontier-view','interior');
   await expect(page.locator('#hangar-launch-btn')).toBeVisible();
   await expect(page.locator('#hangar-occupancy')).toContainText('BAYS');
+  await page.screenshot({path:'test-results/v06-desktop-interior.png'});
 
   await page.locator('#hangar-launch-btn').click();
   await expect(page.locator('body')).toHaveAttribute('data-frontier-view','transition');
   await expect(page.locator('body')).toHaveAttribute('data-frontier-view','flight',{timeout:30_000});
   await expect(page.locator('#dock-btn')).toBeVisible();
+  await page.screenshot({path:'test-results/v06-desktop-flight.png'});
 
   // Start outside the enlarged mothership hull. Approach in manual flight.
   await page.keyboard.down('s');
@@ -29,6 +31,7 @@ test('real desktop flight, departure, side docking and interior controls', async
   await expect(page.locator('body')).toHaveAttribute('data-frontier-view','interior',{timeout:40_000});
   await expect(page.locator('#hangar-summary')).toContainText('Bay');
   await expect(page.locator('#hangar-launch-btn')).toBeVisible();
+  await page.screenshot({path:'test-results/v06-desktop-parked.png'});
 
   await page.locator('#build-toggle').click();
   await expect(page.locator('#builder-panel')).toHaveClass(/open/);
@@ -53,10 +56,12 @@ test.describe('small touch viewport',()=>{
     await page.locator('#start-btn').click();
     await expect(page.locator('body')).toHaveAttribute('data-frontier-view','interior');
     await expect(page.locator('#camera-tools')).toBeVisible();
+    await page.screenshot({path:'test-results/v06-mobile-interior.png'});
     await expect(page.locator('#recenter-btn')).toBeVisible();
     await page.locator('#hangar-launch-btn').click();
     await expect(page.locator('body')).toHaveAttribute('data-frontier-view','flight',{timeout:30_000});
     await expect(page.locator('#mobile-flight')).toBeVisible();
+    await page.screenshot({path:'test-results/v06-mobile-flight.png'});
     await expect(page.locator('#touch-mine')).toBeVisible();
     await page.locator('[data-move="right"]').tap();
     await page.locator('#touch-mine').tap();
