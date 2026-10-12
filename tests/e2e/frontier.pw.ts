@@ -119,6 +119,10 @@ test('upgraded saved mothership stays readable and never stretches launch status
   await page.reload();
   await page.locator('#start-btn').click();
   await expect(page.locator('#hangar-occupancy')).toContainText('/ 12');
+  // Match the real player's large desktop screenshot rather than judging
+  // the expanded flagship only in Playwright's small 1280x720 default.
+  await page.setViewportSize({width:1536,height:960});
+  await expect(page.locator('#hangar-occupancy')).toContainText('/ 12');
   await page.screenshot({path:'test-results/v06-upgraded-hangar.png'});
   await page.locator('#hangar-launch-btn').click();
   await expect(page.locator('body')).toHaveAttribute('data-frontier-view','transition');
