@@ -4,7 +4,8 @@ import {
   nearestDeposit, switchShip,
 } from '../sim/engine';
 import { distance, DOCK_RADIUS, HOME, MINE_RANGE, WORLD } from '../sim/model';
-import { berthWorldPosition, dockingPort, findAvailableBerth } from '../sim/hangar';
+import { berthWorldPosition, dockingPort, findAvailableBerth, sideForBerth, berthHeading } from '../sim/hangar';
+import type { HangarSide } from '../sim/hangar';
 import { arrowOutline, hullSize } from '../sim/arrowGeometry';
 import { dockingRoute, departureRoute, inTractorStage, segmentDuration, shortestAngle } from '../sim/dockingRoute';
 import type { DockWaypoint } from '../sim/dockingRoute';
@@ -30,6 +31,7 @@ export class FlightScene extends Phaser.Scene {
   private rangeIndicator!: Phaser.GameObjects.Graphics;
   private tractorBeam!: Phaser.GameObjects.Graphics;
   private tractorPhase = 0;
+  private currentDockSide:HangarSide='north';
   private enginePhase = 0;
   private controlsBlocked = true;
   private virtualMove = {x:0,y:0};
@@ -127,27 +129,28 @@ export class FlightScene extends Phaser.Scene {
     // banner. Contextual controls already explain launch and docking.
   }
 
-  private setAirlock(open:boolean,animate=true):void {
+  private setAirlock(side:HangarSide,open:boolean,animate=true):void {
     if(!this.art)return;
-    const {doorCenterX,doorLeft,doorRight}=this.art;
-    const distance=29+(open?45:0);
-    this.tweens.killTweensOf([doorLeft,doorRight]);
+    const {left,right,centerX}=this.art.airlocks[side];
+    const distance=20+(open?33:0);
+    this.tweens.killTweensOf([left,right]);
     if(!animate){
-      doorLeft.x=doorCenterX-distance;
-      doorRight.x=doorCenterX+distance;
+      left.x=centerX-distance;
+      right.x=centerX+distance;
       return;
     }
-    this.tweens.add({targets:doorLeft,x:doorCenterX-distance,
-      duration:700,ease:'Sine.InOut'});
-    this.tweens.add({targets:doorRight,x:doorCenterX+distance,
-      duration:700,ease:'Sine.InOut'});
+    this.tweens.add({targets:left,x:centerX-distance,
+      duration:690,ease:'Sine.InOut'});
+    this.tweens.add({targets:right,x:centerX+distance,
+      duration:690,ease:'Sine.InOut'});
   }
 
   private setArtworkOpacity(roofAlpha: number): void {
     if (!this.art) return;
     this.art.roof.setAlpha(roofAlpha);
     this.art.interior.setAlpha(1 - roofAlpha);
-    this.setAirlock(roofAlpha<.5,false);
+    this.setAirlock('north',roofAlpha<.5,false);
+    this.setAirlock('south',roofAlpha<.5,false);
   }
 
   /** Rebuild exterior and interior artwork after the player changes rooms. */
@@ -488,7 +491,7 @@ export class FlightScene extends Phaser.Scene {
   /** A subtle physical tether originates from the shoulder's tractor emitter. */
   private drawTractor(ship:Ship, progress:number):void {
     this.tractorBeam.clear();
-    const port=dockingPort(this.state);
+    const port=dockingPort(this.state,this.currentDockSide);
     const sx=port.tractor.x;
     const sy=port.tractor.y;
     const dx=ship.x-sx,dy=ship.y-sy,dist=Math.hypot(dx,dy);
@@ -534,7 +537,7 @@ export class FlightScene extends Phaser.Scene {
       if(destination.stage!==previousStage){
         previousStage=destination.stage;
         if(!leaving&&destination.stage==='tractor'){
-          this.setAirlock(true);
+          this.setAirlock(this.currentDockSide,true);
           this.announce('TRACTOR LOCK · AIRLOCK OPENING');
         }
         if(!leaving&&destination.stage==='taxi'){
@@ -544,7 +547,7 @@ export class FlightScene extends Phaser.Scene {
           }
         }
         if(leaving&&destination.stage==='clearance'){
-          this.setAirlock(false);
+          this.setAirlock(this.currentDockSide,false);
           if(this.art){
             this.tweens.add({targets:this.art.roof,alpha:1,duration:950,ease:'Sine.InOut'});
             this.tweens.add({targets:this.art.interior,alpha:0,duration:950,ease:'Sine.InOut'});
@@ -620,7 +623,9 @@ export class FlightScene extends Phaser.Scene {
     // Read the real berth position without modifying the ship or the save.
     const parked={...ship,berth};
     const destination=berthWorldPosition(parked);
-    const waypoints=dockingRoute(ship,destination,dockingPort(this.state));
+    this.currentDockSide=sideForBerth(berth);
+    const waypoints=dockingRoute(ship,destination,
+      dockingPort(this.state,this.currentDockSide));
     this.cameraTouched=false;
     this.cameras.main.stopFollow();
     this.setViewMode('transition');
@@ -639,7 +644,7 @@ export class FlightScene extends Phaser.Scene {
         return;
       }
       // The destination exactly matches berthWorldPosition(). No position jump.
-      ship.angle=-Math.PI/2;
+      ship.angle=berthHeading(ship.berth??berth);
       this.animateCameraTo(this.interiorFocus(),this.interiorZoom(),1150,()=>{
         this.setArtworkOpacity(0);
         this.setViewMode('interior');
@@ -661,7 +666,8 @@ export class FlightScene extends Phaser.Scene {
     this.cameras.main.stopFollow();
     this.setViewMode('transition');
     this.announce('UNDOCKING · RELEASE CLAMPS');
-    const port=dockingPort(this.state);
+    this.currentDockSide=sideForBerth(ship.berth??0);
+    const port=dockingPort(this.state,this.currentDockSide);
     // Begin with the wide ship overview, then smoothly dolly INTO the berth
     // before the vessel moves. The old version jumped straight to a closeup.
     this.animateCameraTo({x:ship.x,y:ship.y},
