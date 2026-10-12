@@ -73,6 +73,19 @@ export function buildMothershipArtwork(scene:Phaser.Scene,state:GameState,
   path(structural,HULL,0x101011,0xcfcfd1,3);
   path(structural,INNER,0x1b1b1d,0x626264,1.4);
 
+  // Real structural trusses connect split-tail propulsion to the working
+  // center deck. Each line is part of the ship, not a floating label.
+  path(structural,[[-493,-314],[-424,-322],[-166,-61],[-207,-24]],0x222225,0x77777a,1);
+  path(structural,[[-493,314],[-424,322],[-166,61],[-207,24]],0x222225,0x77777a,1);
+  structural.lineStyle(1,0xaaaaac,.36);
+  for(let i=0;i<7;i++){
+    const x=-410+i*34;
+    const t=(x+410)/245;
+    const y=284*(1-t)+45*t;
+    structural.lineBetween(x,y-18,x+22,y+18);
+    structural.lineBetween(x,-y+18,x+22,-y-18);
+  }
+
   // The official mark's hollowed rear splits into two engine assemblies.
   for(const side of [-1,1]){
     const y=side*293;
@@ -140,6 +153,16 @@ export function buildMothershipArtwork(scene:Phaser.Scene,state:GameState,
   // Physical side access: door housing, passage and a tractor emitter.
   const port=dockingPort(state);
   const doorY=port.entrance.y-homeY;
+  // Airlock passage is a solid continuation of the hangar floor.
+  const passageTop=doorY+21;
+  const passageBottom=floorTop+18;
+  const passageLength=Math.max(20,passageBottom-passageTop);
+  structural.fillStyle(0x252527,1);
+  structural.lineStyle(1.8,0x929294,.85);
+  structural.fillRoundedRect(-157,passageTop,84,passageLength,6);
+  structural.strokeRoundedRect(-157,passageTop,84,passageLength,6);
+  structural.lineStyle(1,0xd0d0d2,.27);
+  structural.lineBetween(-115,passageTop+6,-115,passageTop+passageLength-6);
   structural.fillStyle(0x272729,1);
   structural.lineStyle(2.2,0xe3e3e3,.87);
   structural.fillRoundedRect(-174,doorY-13,116,41,7);
@@ -171,7 +194,15 @@ export function buildMothershipArtwork(scene:Phaser.Scene,state:GameState,
       }
     }
   }
-  for(const room of state.rooms)moduleTile(scene,interior,room,online.has(room.id));
+  // Permanent bridge, first reactor and installed hangar have full-sized
+  // physical facilities above. Never overlay second tiny "rooms" over them.
+  for(const room of state.rooms){
+    if(room.type==='command'||room.type==='hangar'||room.id==='room-2')continue;
+    const p=deckCellPoint(room.x,room.y);
+    structural.lineStyle(1.6,0x8b8b8d,.53);
+    structural.lineBetween(p.x,p.y,p.x,Math.sign(p.y)*58);
+    moduleTile(scene,interior,room,online.has(room.id));
+  }
 
   // Opaque logo-based upper hull. The door is a distinct physical hatch,
   // rather than fading out every room as one identical rectangular slab.
