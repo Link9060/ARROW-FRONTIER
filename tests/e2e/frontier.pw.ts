@@ -136,3 +136,55 @@ test('upgraded saved mothership stays readable and never stretches launch status
   await expect(page.locator('body')).toHaveAttribute('data-frontier-view','flight',{timeout:40_000});
   expect(errors).toEqual([]);
 });
+
+
+test('dual-side hangars: saved industrial miner occupies lower bay and launches through lower airlock',async({page})=>{
+  const errors:string[]=[];
+  page.on('pageerror',err=>errors.push(err.message));
+  await page.goto('/');
+  await page.locator('#start-btn').click();
+  await page.locator('#save-toggle').click();
+  await page.addInitScript(()=>{
+    const key='arrow-frontier-expansion-v2';
+    const raw=localStorage.getItem(key);
+    if(!raw)throw new Error('Missing starter game save');
+    const game=JSON.parse(raw);
+    const miner=game.ships.find((ship:{id:string})=>ship.id==='miner');
+    const scout=game.ships.find((ship:{id:string})=>ship.id==='scout');
+    miner.docked=true;
+    miner.berth=2;
+    miner.mode='manual';
+    scout.mode='hold';
+    game.activeShipId='miner';
+    game.savedAt=Date.now();
+    localStorage.setItem(key,JSON.stringify(game));
+  });
+  await page.reload();
+  await page.locator('#start-btn').click();
+  await page.setViewportSize({width:1536,height:960});
+  await expect(page.locator('#hangar-occupancy')).toContainText('3 / 4');
+  await expect(page.locator('#hangar-summary')).toContainText('MINER-02');
+  await page.screenshot({path:'test-results/v06-dual-lower-berth.png'});
+  await page.locator('#hangar-launch-btn').click();
+  await expect(page.locator('body')).toHaveAttribute('data-frontier-view','transition');
+  await expect(page.locator('body')).toHaveAttribute('data-frontier-view','flight',{timeout:40_000});
+  // Assert actual world location, not just the HUD state.
+  await expect.poll(async()=>{
+    return await page.evaluate(()=>{
+      const raw=localStorage.getItem('arrow-frontier-expansion-v2');
+      if(!raw)return false;
+      const state=JSON.parse(raw);
+      const miner=state.ships.find((s:{id:string})=>s.id==='miner');
+      return !miner.docked && miner.y>1600+690 && miner.berth===undefined;
+    });
+  },{timeout:8000}).toBe(true);
+  await page.keyboard.down('w');
+  try{
+    await expect(page.locator('#pilot-tip')).toContainText('Within docking range',{timeout:15000});
+  }finally{await page.keyboard.up('w');}
+  await page.locator('#dock-btn').click();
+  await expect(page.locator('body')).toHaveAttribute('data-frontier-view','interior',{timeout:50_000});
+  await expect(page.locator('#hangar-summary')).toContainText('MINER-02');
+  await page.screenshot({path:'test-results/v06-dual-lower-return.png'});
+  expect(errors).toEqual([]);
+});
