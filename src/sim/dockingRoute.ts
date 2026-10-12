@@ -23,10 +23,10 @@ function ringPoint(angle:number, radius:number):Point {
  * coordinates and no path straight through the solid capital ship.
  * Approach arcs are always outside the 700-unit clearance ring.
  */
-export function dockingRoute(from:Point, berth:Point):DockWaypoint[] {
+export function dockingRoute(from:Point, berth:Point,port:typeof MOTHERSHIP=MOTHERSHIP):DockWaypoint[] {
   const radius=780;
   const initial=Math.atan2(from.y-HOME.y,from.x-HOME.x);
-  const final=Math.atan2(MOTHERSHIP.approach.y-HOME.y,MOTHERSHIP.approach.x-HOME.x);
+  const final=Math.atan2(port.approach.y-HOME.y,port.approach.x-HOME.x);
   const delta=normalizeAngle(final-initial);
   const count=Math.max(1,Math.ceil(Math.abs(delta)/(Math.PI/7)));
   const route:DockWaypoint[]=[
@@ -36,10 +36,10 @@ export function dockingRoute(from:Point, berth:Point):DockWaypoint[] {
     route.push({point:ringPoint(initial+delta*i/count,radius),stage:'align',speed:415});
   }
   route.push(
-    {point:MOTHERSHIP.approach,stage:'approach',speed:350},
-    {point:{x:MOTHERSHIP.entrance.x,y:MOTHERSHIP.entrance.y-100},stage:'tractor',speed:230},
-    {point:MOTHERSHIP.entrance,stage:'entry',speed:150},
-    {point:{x:MOTHERSHIP.entrance.x,y:HOME.y-246},stage:'taxi',speed:125},
+    {point:port.approach,stage:'approach',speed:350},
+    {point:{x:port.entrance.x,y:port.entrance.y-100},stage:'tractor',speed:230},
+    {point:port.entrance,stage:'entry',speed:150},
+    {point:{x:port.entrance.x,y:HOME.y-246},stage:'taxi',speed:145},
     {point:{x:berth.x,y:HOME.y-180},stage:'taxi',speed:125},
     {point:berth,stage:'taxi',speed:95,heading:0},
   );
@@ -50,13 +50,13 @@ export function dockingRoute(from:Point, berth:Point):DockWaypoint[] {
  * Reverse the physical voyage. The berth stays reserved until the last stage
  * completes and the craft is outside the mothership clearance radius.
  */
-export function departureRoute(from:Point):DockWaypoint[] {
+export function departureRoute(from:Point,port:typeof MOTHERSHIP=MOTHERSHIP):DockWaypoint[] {
   return [
     {point:{x:from.x,y:HOME.y-180},stage:'taxi',speed:110},
-    {point:{x:MOTHERSHIP.entrance.x,y:HOME.y-246},stage:'taxi',speed:135},
-    {point:MOTHERSHIP.entrance,stage:'entry',speed:145},
-    {point:{x:MOTHERSHIP.entrance.x,y:MOTHERSHIP.entrance.y-115},stage:'tractor',speed:225},
-    {point:MOTHERSHIP.departure,stage:'clearance',speed:365,heading:-Math.PI/2},
+    {point:{x:port.entrance.x,y:HOME.y-246},stage:'taxi',speed:135},
+    {point:port.entrance,stage:'entry',speed:145},
+    {point:{x:port.entrance.x,y:port.entrance.y-115},stage:'tractor',speed:225},
+    {point:port.departure,stage:'clearance',speed:365,heading:-Math.PI/2},
   ];
 }
 
