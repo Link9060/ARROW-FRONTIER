@@ -31,7 +31,7 @@ export function hitsMothership(world:Point,state:Pick<GameState,'rooms'>,padding
   // The official mark's actual concave tail shape determines most collisions.
   if(insidePolygon(local,FLAGSHIP_OUTLINE))return true;
   const rows=Math.max(1,Math.ceil(hangarCapacity(state)/4));
-  const floorTop=-183-(rows-1)*112;
+  const floorTop=-183-(rows-1)*138;
   const port=dockingPort(state);
   const doorY=port.entrance.y-HOME.y;
   const pad=Math.max(0,padding);
