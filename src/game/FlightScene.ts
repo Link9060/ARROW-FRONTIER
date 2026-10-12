@@ -4,7 +4,7 @@ import {
   nearestDeposit, switchShip,
 } from '../sim/engine';
 import { distance, DOCK_RADIUS, HOME, MINE_RANGE, WORLD } from '../sim/model';
-import { berthLocalPosition, findAvailableBerth, hangarCapacity, MOTHERSHIP, shipBerthSpan } from '../sim/hangar';
+import { berthLocalPosition, findAvailableBerth, MOTHERSHIP, shipBerthSpan } from '../sim/hangar';
 import { buildMothershipArtwork } from './MothershipArt';
 import type { MothershipArtwork } from './MothershipArt';
 import type { Asteroid, GameState, Point, Ship } from '../sim/model';
