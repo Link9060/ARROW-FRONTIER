@@ -1,4 +1,4 @@
-import type { GameState, Point, Ship } from './model';
+import type { GameState, Ship } from './model';
 import { berthWorldPosition, dockingPort, sideForBerth } from './hangar';
 import { dockingRoute, departureRoute, shortestAngle } from './dockingRoute';
 
@@ -7,7 +7,7 @@ import { dockingRoute, departureRoute, shortestAngle } from './dockingRoute';
  * geometry as the player's cinematic, but no Phaser tweens or camera state.
  * Route stage indexes and an entry coordinate are small enough to save.
  */
-export function beginFleetLaunch(state:GameState,ship:Ship):boolean {
+export function beginFleetLaunch(ship:Ship):boolean {
   if(!ship.docked||ship.navigation||ship.berth===undefined)return false;
   const berth=ship.berth;
   ship.navigation={
@@ -20,7 +20,7 @@ export function beginFleetLaunch(state:GameState,ship:Ship):boolean {
   return true;
 }
 
-export function beginFleetDock(state:GameState,ship:Ship,berth:number):boolean {
+export function beginFleetDock(ship:Ship,berth:number):boolean {
   if(ship.docked||ship.navigation)return false;
   ship.navigation={
     kind:'dock',side:sideForBerth(berth),berth,step:0,
