@@ -6,7 +6,9 @@ import {
 import {
   dockingRoute, departureRoute, inTractorStage, segmentDuration, shortestAngle,
 } from '../src/sim/dockingRoute';
-import { berthWorldPosition, findAvailableBerth, hangarCapacity, MOTHERSHIP } from '../src/sim/hangar';
+import { berthWorldPosition, dockingPort, findAvailableBerth, hangarCapacity, MOTHERSHIP } from '../src/sim/hangar';
+import { buildRoom } from '../src/sim/mothership';
+import { beamExtent } from '../src/game/MiningEffects';
 import { distance, DOCK_RADIUS, HOME, makeNewGame } from '../src/sim/model';
 
 describe('v0.6 ARROW source asset and all ship classes', () => {
@@ -75,6 +77,31 @@ describe('v0.6 continuous docking route', () => {
     expect(segmentDuration(p,p,150)).toBe(80);
     expect(shortestAngle(3.12,-3.12)).toBeGreaterThan(3.12);
   });
+  it('an expanded hangar moves its real airlock, tractor and departure outward', () => {
+    const game=makeNewGame();
+    const starter=dockingPort(game);
+    game.stored.iron=500;
+    game.stored.copper=500;
+    game.stored.alloy=40;
+    expect(buildRoom(game,'hangar',4,2)).toBeNull();
+    const expanded=dockingPort(game);
+    expect(expanded.entrance.y).toBe(starter.entrance.y-112);
+    expect(expanded.tractor.y).toBe(starter.tractor.y-112);
+    expect(expanded.departure.y).toBe(starter.departure.y-112);
+    const berth=berthWorldPosition({...game.ships[0],berth:4});
+    const inbound=dockingRoute({x:HOME.x+100,y:HOME.y+250},berth,expanded);
+    expect(inbound.some(w=>w.stage==='entry'&&w.point.y===expanded.entrance.y)).toBe(true);
+    expect(departureRoute(berth,expanded).at(-1)!.point).toEqual(expanded.departure);
+  });
+  it('starts laser with a forward tip and retracts the tail after release', () => {
+    expect(beamExtent(.025,0).end).toBeCloseTo(.175);
+    expect(beamExtent(1,0)).toEqual({start:0,end:1,strength:1});
+    const cooling=beamExtent(1,.1);
+    expect(cooling.start).toBeCloseTo(.48);
+    expect(cooling.end).toBe(1);
+    expect(beamExtent(1,1).strength).toBe(0);
+  });
+
   it('additional hangar capacity moves parking rows toward the side', () => {
     const game=makeNewGame();
     const berth0=berthWorldPosition({...game.ships[0],berth:0});
