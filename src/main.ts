@@ -237,6 +237,7 @@ function updateUI():void{
     pilot.dataset.worldY=member.y.toFixed(2);
     pilot.dataset.docked=String(member.docked);
     pilot.dataset.order=shipOrder(member);
+    pilot.dataset.cargo=cargoTotal(member.cargo).toFixed(2);
     pilot.querySelector('.fleet-name')!.textContent=member.name;
     pilot.querySelector('.fleet-role')!.textContent=
       member.role+' · '+roundCargo(cargoTotal(member.cargo))+'/'+member.capacity;
