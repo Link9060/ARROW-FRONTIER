@@ -1,13 +1,21 @@
 # ARROW: FRONTIER
 > **A persistent 2D space exploration, mining, fleet automation, economy, and civilization-building game within Project ARROW.**
 
-**Status:** Concept / preproduction  
+**Status:** Playable browser prototype v0.2; major planned features remain unimplemented  
 **Document:** Master game design README, version 0.1  
 **Parent ecosystem:** Project ARROW / Resonant Assist  
 **Game:** ARROW: FRONTIER (AF)  
 **Core experience:** Build a mobile civilization, pilot ships manually, automate fleets with game-native RAVIN logic, explore and trade across star systems, and optionally enter a shared multiplayer multiverse.
 
 > This README is a **design specification**, not a statement that these systems are already implemented. Sections distinguish **agreed direction**, **proposed implementation**, and **open decisions**. Numbers and sample names are placeholders for balancing.
+
+## Current playable implementation
+
+**v0.2 · Mothership Expansion (October 2026):** A browser-based Phaser prototype currently includes manual 2D ship piloting, asteroid mining, docking and cargo unloading, two ships with instant control switching, deterministic game-native RAVIN mining automation, versioned local saves with offline catch-up, a connected 6×4 mothership room builder, power priorities, expanded storage, ore-to-alloy refineries, and docked ship upgrades through a fabricator.
+
+**Important:** This is a small private-universe local prototype. It does **not** yet implement planets, a system/galaxy map, accounts, shared multiplayer worlds, market trading, piracy, conquest, or portals. See [Mothership Expansion implementation notes](docs/MOTHERSHIP-V02.md) and [First Flight notes](docs/FIRST-FLIGHT.md).
+
+---
 
 ## Contents
 1. [Vision and design pillars](#1-vision-and-design-pillars)

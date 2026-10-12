@@ -2,7 +2,9 @@ import Phaser from 'phaser';
 import './style.css';
 import { FlightScene } from './game/FlightScene';
 import { activeShip, roundCargo } from './sim/engine';
-import { cargoTotal, distance, HOME } from './sim/model';
+import { cargoTotal, distance, HOME, storedTotal } from './sim/model';
+import { powerReport } from './sim/mothership';
+import { BuilderUI } from './ui/BuilderUI';
 import { loadGame, resetGame, saveGame } from './sim/persistence';
 
 const loaded = loadGame();
@@ -25,13 +27,16 @@ function notice(message: string): void {
 
 function updatePanel(): void {
   const ship = activeShip(state);
-  const storedTotal = cargoTotal(state.stored);
+  const usedStorage = storedTotal(state.stored);
+  const power = powerReport(state);
   const cargo = cargoTotal(ship.cargo);
   const nearby = distance(ship, HOME) < 190;
-  byId('storage').textContent = roundCargo(storedTotal) + ' / ' + state.storageCapacity;
-  byId('storage-fill').style.width = (100 * storedTotal / state.storageCapacity) + '%';
+  byId('storage').textContent = roundCargo(usedStorage) + ' / ' + state.storageCapacity;
+  byId('storage-fill').style.width = (100 * usedStorage / state.storageCapacity) + '%';
   byId('stored-iron').textContent = roundCargo(state.stored.iron);
   byId('stored-copper').textContent = roundCargo(state.stored.copper);
+  byId('stored-alloy').textContent = roundCargo(state.stored.alloy);
+  byId('power-summary').textContent = power.load + ' / ' + power.output;
   byId('ship-name').textContent = ship.name;
   byId('ship-class').textContent = ship.role;
   byId('cargo').textContent = roundCargo(cargo) + ' / ' + ship.capacity;
@@ -73,6 +78,7 @@ function updatePanel(): void {
         : member.mode === 'auto' ? '◉ RAVIN / MINING'
           : '◯ WAITING / DOCKED';
   }
+  builder?.tick();
 }
 
 function persist(showNotice = false): void {
@@ -82,6 +88,13 @@ function persist(showNotice = false): void {
 }
 
 const scene = new FlightScene(state, updatePanel, notice, () => persist());
+let started = false;
+scene.setControlsBlocked(true);
+const builder = new BuilderUI(state, () => {
+  scene.drawMothership();
+  updatePanel();
+  persist();
+}, (open) => scene.setControlsBlocked(open || !started), notice);
 const game = new Phaser.Game({
   type: Phaser.AUTO,
   parent: 'game',
@@ -98,8 +111,10 @@ const game = new Phaser.Game({
 
 byId('start-btn').addEventListener('click', () => {
   byId('start-overlay').classList.add('hidden');
+  started = true;
+  scene.setControlsBlocked(builder.isOpen);
   if (loaded.recovered) {
-    notice('WELCOME BACK · ' + Math.round(loaded.offlineSeconds / 60) + ' MINUTES OF OFFLINE SIMULATED');
+    notice((loaded.migrated ? 'SAVE UPGRADED · ' : 'WELCOME BACK · ') + Math.round(loaded.offlineSeconds / 60) + ' MINUTES OF OFFLINE SIMULATED');
   } else {
     notice('FIRST FLIGHT · WELCOME TO FRONTIER');
   }
@@ -112,6 +127,17 @@ byId('dock-btn').addEventListener('click', () => {
   if (!activeShip(state).docked) scene.launchOrDock();
 });
 byId('save-btn').addEventListener('click', () => persist(true));
+byId('fleet-resume').addEventListener('click', () => {
+  let count = 0;
+  for (const member of state.ships) {
+    if (member.id === state.activeShipId || member.mode !== 'hold') continue;
+    member.mode = 'auto';
+    count++;
+  }
+  notice(count ? count + ' IDLE VESSEL(S) RESUMED' : 'NO IDLE VESSELS TO RESUME');
+  updatePanel();
+  persist();
+});
 byId('reset-btn').addEventListener('click', () => {
   if (window.confirm('Erase your local FRONTIER save and start a new expedition?')) {
     resetGame();

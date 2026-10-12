@@ -1,8 +1,9 @@
 import {
   cargoTotal, distance, DOCK_RADIUS, HOME, MINE_RANGE,
-  OFFLINE_CAP_SECONDS, WORLD,
+  OFFLINE_CAP_SECONDS, storedTotal, WORLD,
 } from './model';
 import type { Asteroid, GameState, Ship } from './model';
+import { runIndustry } from './mothership';
 
 export type DockResult = 'docked' | 'too-far' | 'already-docked';
 
@@ -34,7 +35,7 @@ export function launchShip(ship: Ship): boolean {
 
 export function depositCargo(state: GameState, ship: Ship): number {
   if (distance(ship, HOME) > DOCK_RADIUS) return 0;
-  const free = Math.max(0, state.storageCapacity - cargoTotal(state.stored));
+  const free = Math.max(0, state.storageCapacity - storedTotal(state.stored));
   let deposited = 0;
   for (const ore of ['iron', 'copper'] as const) {
     const quantity = Math.min(ship.cargo[ore], free - deposited);
@@ -95,19 +96,20 @@ function travel(ship: Ship, destination: { x: number; y: number }, seconds: numb
 
 export function runAutomation(state: GameState, seconds: number): void {
   if (!Number.isFinite(seconds) || seconds <= 0) return;
+  runIndustry(state, seconds);
   for (const ship of state.ships) {
     if (ship.id === state.activeShipId || ship.mode !== 'auto') continue;
     if (ship.docked) {
-      if (cargoTotal(state.stored) >= state.storageCapacity) { ship.mode = 'hold'; continue; }
+      if (storedTotal(state.stored) >= state.storageCapacity) { ship.mode = 'hold'; continue; }
       launchShip(ship);
     }
 
     const full = cargoTotal(ship.cargo) >= ship.capacity - 0.001;
     const target = nearestDeposit(state, ship);
-    if (full || !target || cargoTotal(state.stored) >= state.storageCapacity) {
+    if (full || !target || storedTotal(state.stored) >= state.storageCapacity) {
       if (travel(ship, HOME, seconds, DOCK_RADIUS - 10)) {
         dockShip(state, ship);
-        if (cargoTotal(state.stored) >= state.storageCapacity || !target) ship.mode = 'hold';
+        if (storedTotal(state.stored) >= state.storageCapacity || !target) ship.mode = 'hold';
       }
       continue;
     }
