@@ -153,7 +153,8 @@ button:focus-visible,select:focus-visible{outline:2px solid #fff;outline-offset:
   align-items:center;text-align:left;color:white
 }
 .fleet-ship.selected{border-color:#b7b7b7;background:#303033}
-.fleet-ship:hover{background:#353538}
+.fleet-ship:hover:not(:disabled){background:#353538}
+.fleet-ship:disabled{cursor:wait;opacity:.72}
 .fleet-identity{display:grid;gap:5px}
 .fleet-name{font-size:13px;font-weight:590}
 .fleet-role{font-size:10px;color:#9e9ea2}
