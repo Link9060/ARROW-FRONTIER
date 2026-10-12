@@ -8,12 +8,12 @@ import type { Point } from '../sim/model';
  */
 export const CELL_SIZE={width:75,height:25} as const;
 export const CORE_DECK={
-  x:-242,y:-74,width:512,height:148,
+  x:-242,y:-59,width:512,height:118,
 } as const;
 export function deckCellPoint(x:number,y:number):Point {
   return {
     x:-208+Math.max(0,Math.min(ROOM_GRID.columns-1,x))*91,
-    y:-51+Math.max(0,Math.min(ROOM_GRID.rows-1,y))*34,
+    y:-43+Math.max(0,Math.min(ROOM_GRID.rows-1,y))*(86/3),
   };
 }
 export function locateDeckCell(localX:number,localY:number):{x:number;y:number}|null {
