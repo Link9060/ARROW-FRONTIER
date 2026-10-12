@@ -2,6 +2,7 @@ import { FLAGSHIP_OUTLINE } from './arrowGeometry';
 import { HOME } from './model';
 import type { Point } from './model';
 import { dockingPort, hangarCapacity } from './hangar';
+import { HANGAR_SIDES, hangarFloor } from './flagshipLayout';
 import type { GameState } from './model';
 
 export function insidePolygon(point:Point,vertices:readonly (readonly [number,number])[]):boolean {
@@ -30,17 +31,19 @@ export function hitsMothership(world:Point,state:Pick<GameState,'rooms'>,padding
   const local={x:world.x-HOME.x,y:world.y-HOME.y};
   // The official mark's actual concave tail shape determines most collisions.
   if(insidePolygon(local,FLAGSHIP_OUTLINE))return true;
-  const rows=Math.max(1,Math.ceil(hangarCapacity(state)/4));
-  const floorTop=-183-(rows-1)*138;
-  const port=dockingPort(state);
-  const doorY=port.entrance.y-HOME.y;
+  const tiers=Math.max(1,Math.ceil(hangarCapacity(state)/4));
   const pad=Math.max(0,padding);
-  // Side hangar is a physically constructed extension, not a HUD upgrade.
-  if(insideRect(local,-294-pad,floorTop-22-pad,588+pad*2,
-    (-45)-(floorTop-22)+pad*2))return true;
-  // Narrow bridge between side airlock and the existing hangar shell.
-  if(insideRect(local,-68-pad,doorY-22-pad,136+pad*2,
-    floorTop-(doorY-22)+pad*2))return true;
+  for(const side of HANGAR_SIDES){
+    const floor=hangarFloor(side,tiers);
+    // These compartments stay inside the logo; the small side-port collar
+    // may project beyond the outline, so it needs an explicit collider.
+    if(insideRect(local,floor.x-pad,floor.y-pad,
+      floor.width+2*pad,floor.height+2*pad))return true;
+    const port=dockingPort(state,side);
+    const doorX=port.entrance.x-HOME.x,doorY=port.entrance.y-HOME.y;
+    if(insideRect(local,doorX-42-pad,doorY-17-pad,
+      84+2*pad,34+2*pad))return true;
+  }
   return false;
 }
 
