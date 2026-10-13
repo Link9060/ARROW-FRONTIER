@@ -371,7 +371,7 @@ test.describe('contextual build on mobile',()=>{
     await expect(page.locator('#room-details')).toBeHidden();
     await page.locator('#room-grid [data-grid-x="1"][data-grid-y="1"]').tap();
     await page.locator('.room-choice[data-module-type="storage"] .room-choice-toggle').tap();
-    await expect(page.locator('.room-choice[data-module-type="storage"]')).toContainText('STORAGE');
+    await expect(page.locator('.room-choice[data-module-type="storage"]')).toContainText('Cargo Warehouse');
     await expect(page.locator('.room-choice[data-module-type="storage"]')).toContainText('OUTPUT / WHAT YOU GAIN');
     await expect(page.locator('[data-action="build-room"]')).toBeDisabled();
     await expect(page.locator('.material-count.shortage')).not.toHaveCount(0);
