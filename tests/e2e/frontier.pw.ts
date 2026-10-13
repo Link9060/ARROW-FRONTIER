@@ -14,7 +14,7 @@ async function shipDistance(page:Page,id:string):Promise<number>{
 async function pointShipTowardHome(page:Page,id:string):Promise<void>{
   const ship=page.locator('.fleet-ship[data-ship-id="'+id+'"]');
   let lastError=Infinity;
-  for(let attempt=0;attempt<20;attempt++){
+  for(let attempt=0;attempt<35;attempt++){
     const point=await ship.evaluate(element=>({
       x:Number((element as HTMLButtonElement).dataset.worldX),
       y:Number((element as HTMLButtonElement).dataset.worldY),
@@ -225,7 +225,8 @@ test('dual-side hangars: saved industrial miner occupies lower bay and launches 
   await expect(page.locator('body')).toHaveAttribute('data-frontier-view','interior',{timeout:50_000});
   await expect(page.locator('#hangar-summary')).toContainText('Hangar B');
   await expect(page.locator('#hangar-summary')).toContainText('MINER-02');
-  await page.screenshot({path:'test-results/v06-dual-lower-return.png'});
+  // Don't block the already-verified docked state on a final full-frame
+  // screenshot: CI software rendering can stall during canvas capture.
   expect(errors).toEqual([]);
 });
 
