@@ -315,3 +315,129 @@ body[data-frontier-view="interior"] .interior-hud{top:96px}
 @media(max-width:760px){
   body[data-frontier-view="transition"] #toast{top:74px;max-width:calc(100vw - 20px);padding:9px 12px}
 }
+
+
+/* v0.6.4: construction is deck-first. This panel contains NO permanent palette,
+   power report or ship-upgrade widgets. Detailed specs appear on selection. */
+.builder-panel{width:min(420px,calc(100vw - 32px))}
+.builder-instructions{margin-bottom:20px;max-width:345px}
+.builder-instructions strong{color:#e9e9eb;font-weight:700;font-size:15px}
+.builder-grid-head{margin-top:0;padding-top:0;border-top:0}
+.builder-panel .deck-grid{gap:7px}
+.builder-panel .module-cell{
+  aspect-ratio:1.1;min-height:47px;border-radius:9px;
+  transition:background .18s,border-color .18s,box-shadow .18s
+}
+.builder-panel .module-cell.occupied{
+  background:#d8d8da;color:#1a1a1c;border-color:#d8d8da
+}
+.builder-panel .module-cell.connected{
+  border:1px dashed #a4a4aa;color:#eaeaec;background:#2a2a2e
+}
+.builder-panel .module-cell.connected:hover{
+  background:#39393e;border-color:#f4f4f4
+}
+.builder-panel .module-cell.empty{
+  background:#1c1c1f;color:#535358;border-color:#2b2b2f;cursor:default
+}
+.builder-panel .module-cell.empty:hover{border-color:#2b2b2f}
+.builder-panel .module-cell:focus-visible{
+  outline:2px solid white;outline-offset:3px
+}
+.builder-panel .module-cell.focused{
+  box-shadow:0 0 0 2px #cfcfd1;outline:0;border-color:#e5e5e6
+}
+.builder-panel .module-symbol{font-size:10px;font-weight:700}
+.builder-panel .module-level{font-size:9px}
+.builder-panel .module-plus{font-size:20px;font-weight:400}
+.room-details[hidden]{display:none!important}
+.builder-panel .room-details{
+  margin-top:23px;padding-top:17px;border-top:1px solid var(--hair)
+}
+.room-selection-header{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.room-selection-header .detail-title{margin:6px 0 4px;font-size:21px}
+.detail-dismiss{
+  width:28px;height:28px;border:1px solid #48484e;
+  background:#262629;color:#ddd;border-radius:7px;
+  font-size:21px;line-height:1;cursor:pointer
+}
+.detail-dismiss:hover{background:#38383b}
+.room-choice-list{display:grid;gap:7px;margin-top:18px}
+.room-choice{
+  border:1px solid #3f3f44;border-radius:10px;
+  background:#222225;overflow:hidden
+}
+.room-choice.expanded{border-color:#a5a5aa;background:#252528}
+.room-choice-toggle{
+  width:100%;min-height:51px;padding:10px 12px;background:transparent;
+  border:0;color:#eeeef0;cursor:pointer;display:flex;
+  align-items:center;justify-content:space-between;gap:10px;text-align:left
+}
+.room-choice-toggle:hover{background:#303034}
+.room-choice-toggle:focus-visible{outline:2px solid white;outline-offset:-3px}
+.room-choice-leading{display:flex;align-items:center;gap:11px;min-width:0}
+.room-choice-code{
+  display:grid;place-items:center;flex:0 0 44px;height:30px;
+  border:1px solid #4a4a50;border-radius:6px;
+  font-size:10px;color:#c1c1c5;letter-spacing:.04em
+}
+.room-choice-name{font-size:12px;font-weight:600;line-height:1.4}
+.room-choice-chevron{font-size:18px;color:#bcbcc1;font-weight:400}
+.room-choice-details,.room-installed-breakdown{
+  border-top:1px solid #3b3b40;padding:12px 13px 15px;
+}
+.room-choice-details .detail-copy{font-size:11px;margin:4px 0 12px;color:#bcbcc1}
+.detail-subtitle{
+  margin:13px 0 7px;font-size:9px;letter-spacing:.12em;
+  font-weight:700;color:#e5e5e7
+}
+.room-materials{
+  margin:12px 0 15px;padding:10px 11px;
+  background:#1b1b1e;border:1px solid #3b3b40;border-radius:8px
+}
+.room-materials .detail-subtitle{margin-top:0}
+.material-row{
+  display:flex;justify-content:space-between;gap:8px;
+  padding:7px 0;border-bottom:1px solid #2c2c31;
+  font-size:10px;line-height:1.4
+}
+.material-row:last-child{border-bottom:0}
+.material-name{color:#bebec3;font-weight:650;letter-spacing:.05em}
+.material-count{color:#e9e9eb;text-align:right;font-variant-numeric:tabular-nums}
+.material-count.shortage{color:#e4a5a5}
+.room-economy-section{margin:13px 0}
+.room-economy-section .detail-copy{margin:3px 0 11px}
+.room-economy-list{padding-left:16px;margin:5px 0 11px}
+.room-economy-list li{font-size:11px;line-height:1.65;color:#b9b9bf;margin:3px 0}
+.room-choice-details .builder-action,.room-installed-breakdown .builder-action{
+  justify-content:center;text-align:center;font-weight:620;
+  border-color:#dadadd;background:#e7e7e8;color:#151518
+}
+.room-choice-details .builder-action:not(:disabled):hover,
+.room-installed-breakdown .builder-action:not(:disabled):hover{background:#fff}
+.room-choice-details .builder-action:disabled,
+.room-installed-breakdown .builder-action:disabled{
+  background:#343438;color:#85858a;border-color:#4d4d53;opacity:1;cursor:not-allowed
+}
+.room-action-hint{font-size:10px;line-height:1.5;color:#99999f;margin:8px 0 0}
+.room-installed-details{
+  border:1px solid #414147;border-radius:9px;
+  background:#252528;margin:9px 0;overflow:hidden
+}
+.room-installed-summary{
+  list-style:none;cursor:pointer;padding:13px;font-size:11px;
+  font-weight:550;color:#e2e2e4
+}
+.room-installed-summary::-webkit-details-marker{display:none}
+.room-installed-summary:after{content:'⌄';float:right;font-size:17px;color:#aaa}
+.room-installed-details[open] .room-installed-summary:after{content:'⌃'}
+.room-installed-summary:hover{background:#313136}
+.room-installed-summary:focus-visible{outline:2px solid #fff;outline-offset:-2px}
+#fleet-upgrades{font-size:12px}
+#fleet-upgrades .fabricator-upgrade{padding:12px 0}
+#fleet-upgrades .builder-action{justify-content:center}
+@media(max-width:760px){
+  #builder-panel{width:min(430px,100vw)}
+  .builder-panel .module-cell{min-height:39px}
+  .builder-panel .deck-grid{gap:5px}
+}
