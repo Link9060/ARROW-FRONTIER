@@ -1,13 +1,27 @@
 # ARROW: FRONTIER
 > **A persistent 2D space exploration, mining, fleet automation, economy, and civilization-building game within Project ARROW.**
 
-**Status:** Playable browser prototype v0.6.3 (independent fleet operations); major planned features remain unimplemented  
+**Status:** Playable browser prototype v0.6.4 (contextual deck construction); major planned features remain unimplemented  
 **Document:** Master game design README, version 0.1  
 **Parent ecosystem:** Project ARROW / Resonant Assist  
 **Game:** ARROW: FRONTIER (AF)  
 **Core experience:** Build a mobile civilization, pilot ships manually, automate fleets with game-native RAVIN logic, explore and trade across star systems, and optionally enter a shared multiplayer multiverse.
 
 > This README is a **design specification**, not a statement that these systems are already implemented. Sections distinguish **agreed direction**, **proposed implementation**, and **open decisions**. Numbers and sample names are placeholders for balancing.
+
+## v0.6.4 · Contextual Deck Construction
+
+**Build is now a grid-first workflow.** Opening Build displays only the existing 6×4 mothership room grid and a brief instruction. There is no permanent room palette, repeated materials panel, power dashboard or ship-upgrade list inside Build.
+
+Select an available **+** on the grid or inside the physical ship to view five buildable room choices. Each room expands into a detailed breakdown of:
+- The exact iron, copper and alloy required, alongside currently stored quantities.
+- What the module does, practical benefits, and meaningful limitations.
+- Ongoing power or ore consumption versus actual production or capacity gains.
+- A separate **Build room** confirmation, with a visible explanation if construction is blocked.
+
+Clicking an installed room reveals its status, expandable room information, upgrade costs and power controls where applicable. Ship-specific Mining and Cargo upgrades now belong to **Fleet**, under the Fabricator section. Room IDs, levels and saves stay unchanged.
+
+This release is guarded by four new economy tests and two Chromium desktop/mobile Build tests, including verifying that inspecting a room never spends resources and that a confirmed build spends exactly its advertised materials. See [Build workflow and QA notes](docs/FRONTIER-V0.6.4-CONTEXTUAL-BUILD.md).
 
 ## v0.6.3 · Autonomous Fleet Missions
 
