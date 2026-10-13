@@ -164,8 +164,8 @@ function updateUI():void{
   $('pilot-tip').textContent=cargo>=ship.capacity-0.01?'Cargo full. Return to your mothership.':
     dist<=DOCK_RADIUS?'Within docking range. Press E or Dock.':
     (window.matchMedia('(pointer: coarse)').matches?
-      'Use the arrows to fly. Hold Mine near an asteroid.':
-      'WASD to move · Space to mine · E to dock');
+      '↑ thrust · ← → turn · ↓ brake · Hold Mine near an asteroid.':
+      'W/↑ thrust · A/D turn · S/↓ brake · Space mine · E dock');
 
   $('hangar-occupancy').textContent=dockedBerthCount(state)+' / '+hangarCapacity(state)+' BAYS';
   $('hangar-summary').textContent='Hangar '+(sideForBerth(ship.berth??0)==='north'?'A':'B')+' · Bay '+String((ship.berth??0)+1).padStart(2,'0')+' · '+ship.name;
@@ -238,6 +238,7 @@ function updateUI():void{
     pilot.title=member.navigation?'Autopilot taxi in progress · wait until clear':'Pilot '+member.name;
     pilot.dataset.worldX=member.x.toFixed(2);
     pilot.dataset.worldY=member.y.toFixed(2);
+    pilot.dataset.heading=member.angle.toFixed(4);
     pilot.dataset.docked=String(member.docked);
     pilot.dataset.order=shipOrder(member);
     pilot.dataset.cargo=cargoTotal(member.cargo).toFixed(2);
@@ -323,9 +324,9 @@ $('fleet-resume').addEventListener('click',()=>{
   notice(resumed?resumed+' ship(s) sent mining':'No idle ships to dispatch');
 });
 
-// Phaser handles normal keyboard input, but a native button can keep focus
-// after Launch. Mirror movement keys at window level so flight never feels
-// temporarily unresponsive. Input is normalized by the scene, not doubled.
+// A native button can keep focus after Launch. Mirror the Asteroids-style
+// flight inputs at window level so controls remain responsive. The scene
+// treats Phaser and virtual inputs as a single boolean per command.
 const keyDirection:Record<string,string>={
   KeyW:'up',ArrowUp:'up',KeyS:'down',ArrowDown:'down',
   KeyA:'left',ArrowLeft:'left',KeyD:'right',ArrowRight:'right',
