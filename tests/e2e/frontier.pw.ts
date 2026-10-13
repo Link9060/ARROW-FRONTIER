@@ -275,3 +275,111 @@ test('Fleet panel dispatches docked miner, recalls it and retains Hold without m
   await expect(miner.locator('.fleet-state')).toContainText('HOLDING',{timeout:20000});
   expect(errors).toEqual([]);
 });
+
+
+test('Build is grid-first and only spends materials after explicit room confirmation',async({page})=>{
+  const errors:string[]=[];
+  page.on('pageerror',e=>errors.push(e.message));
+  await page.goto('/');
+  await page.locator('#start-btn').click();
+  await page.locator('#save-toggle').click();
+  // Seed a known funded world before the NEXT document initializes.
+  await page.addInitScript(()=>{
+    const key='arrow-frontier-expansion-v2';
+    const raw=localStorage.getItem(key);
+    if(!raw)throw new Error('Starter save missing');
+    const data=JSON.parse(raw);
+    data.stored={iron:250,copper:160,alloy:40};
+    data.ships.find((ship:{id:string})=>ship.id==='miner').mode='hold';
+    data.savedAt=Date.now();
+    localStorage.setItem(key,JSON.stringify(data));
+  });
+  await page.reload();
+  await page.locator('#start-btn').click();
+  await page.setViewportSize({width:1536,height:960});
+  await page.locator('#build-toggle').click();
+  await expect(page.locator('#builder-panel')).toHaveClass(/open/);
+  await expect(page.locator('#room-grid .module-cell')).toHaveCount(24);
+  await expect(page.locator('#room-details')).toBeHidden();
+  await expect(page.locator('#room-palette')).toHaveCount(0);
+  await expect(page.locator('#fabricator-panel')).toHaveCount(0);
+  await page.screenshot({path:'test-results/v064-build-grid.png'});
+
+  const empty=page.locator('#room-grid [data-grid-x="1"][data-grid-y="1"]');
+  await empty.click();
+  await expect(page.locator('#room-details')).toBeVisible();
+  await expect(page.locator('.room-choice-toggle')).toHaveCount(5);
+  // Looking through the catalog does NOT build anything or spend resources.
+  await expect(page.locator('[data-action="build-room"]')).toHaveCount(0);
+  await page.locator('.room-choice[data-module-type="refinery"] .room-choice-toggle').click();
+  const refinery=page.locator('.room-choice[data-module-type="refinery"]');
+  await expect(refinery.locator('.room-choice-toggle')).toHaveAttribute('aria-expanded','true');
+  await expect(refinery.locator('.room-materials')).toContainText('28 needed');
+  await expect(refinery.locator('.room-economy-section')).toContainText([
+    /BENEFITS/,
+    /DRAWBACKS/,
+    /RUNNING INPUTS/,
+  ]);
+  await expect(refinery).toContainText('2 iron + 1 copper per alloy');
+  await expect(refinery).toContainText('Up to 1 alloy every 4 seconds');
+  await expect(page.locator('[data-action="build-room"]')).toBeEnabled();
+  const before=await page.evaluate(()=>{
+    const data=JSON.parse(localStorage.getItem('arrow-frontier-expansion-v2')!);
+    return {rooms:data.rooms.length,...data.stored};
+  });
+  expect(before).toMatchObject({rooms:4,iron:250,copper:160,alloy:40});
+  await page.screenshot({path:'test-results/v064-module-details.png'});
+
+  await page.locator('[data-action="build-room"]').click();
+  await expect(empty).toHaveClass(/occupied/);
+  await expect(page.locator('#room-details')).toContainText('Ore Refinery');
+  const after=await page.evaluate(()=>{
+    const data=JSON.parse(localStorage.getItem('arrow-frontier-expansion-v2')!);
+    return {rooms:data.rooms.length,...data.stored};
+  });
+  expect(after).toMatchObject({rooms:5,iron:222,copper:142,alloy:40});
+  await page.locator('#room-details .room-installed-details').first().locator('summary').click();
+  await expect(page.locator('#room-details')).toContainText('Up to 1 alloy every 4 seconds');
+  await page.locator('#room-details .room-installed-details').nth(1).locator('summary').click();
+  await expect(page.locator('[data-action="upgrade-room"]')).toBeEnabled();
+  await page.locator('[data-action="upgrade-room"]').click();
+  await expect(page.locator('#room-grid [data-grid-x="1"][data-grid-y="1"]')).toContainText('L2');
+  await page.screenshot({path:'test-results/v064-built-room.png'});
+
+  // Fabricator can now be constructed from the same contextual + flow.
+  await page.locator('#room-grid [data-grid-x="1"][data-grid-y="2"]').click();
+  await page.locator('.room-choice[data-module-type="fabricator"] .room-choice-toggle').click();
+  await expect(page.locator('[data-action="build-room"]')).toBeEnabled();
+  await page.locator('[data-action="build-room"]').click();
+  await page.locator('#builder-close').click();
+  await page.locator('#fleet-toggle').click();
+  await expect(page.locator('#fleet-upgrades')).toContainText('Mining efficiency');
+  await expect(page.locator('#fleet-upgrades')).toContainText('Cargo capacity');
+  await expect(page.locator('#builder-panel #fabricator-panel')).toHaveCount(0);
+  await page.screenshot({path:'test-results/v064-fleet-upgrades.png'});
+  expect(errors).toEqual([]);
+});
+
+test.describe('contextual build on mobile',()=>{
+  test.use({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});
+  test('grid and expandable material requirements stay readable without permanent widgets',async({page})=>{
+    const errors:string[]=[];
+    page.on('pageerror',e=>errors.push(e.message));
+    await page.goto('/');
+    await page.locator('#start-btn').click();
+    await page.locator('#build-toggle').click();
+    await expect(page.locator('#room-details')).toBeHidden();
+    await page.locator('#room-grid [data-grid-x="1"][data-grid-y="1"]').tap();
+    await page.locator('.room-choice[data-module-type="storage"] .room-choice-toggle').tap();
+    await expect(page.locator('.room-choice[data-module-type="storage"]')).toContainText('Cargo Warehouse');
+    await expect(page.locator('.room-choice[data-module-type="storage"]')).toContainText('OUTPUT / WHAT YOU GAIN');
+    await expect(page.locator('[data-action="build-room"]')).toBeDisabled();
+    await expect(page.locator('.material-count.shortage')).not.toHaveCount(0);
+    const bounds=await page.locator('#builder-panel').boundingBox();
+    expect(bounds).not.toBeNull();
+    expect(bounds!.x).toBeGreaterThanOrEqual(-1);
+    expect(bounds!.x+bounds!.width).toBeLessThanOrEqual(391);
+    await page.screenshot({path:'test-results/v064-build-mobile.png',fullPage:true});
+    expect(errors).toEqual([]);
+  });
+});
