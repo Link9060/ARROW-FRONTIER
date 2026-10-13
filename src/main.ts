@@ -238,6 +238,7 @@ function updateUI():void{
     pilot.title=member.navigation?'Autopilot taxi in progress · wait until clear':'Pilot '+member.name;
     pilot.dataset.worldX=member.x.toFixed(2);
     pilot.dataset.worldY=member.y.toFixed(2);
+    pilot.dataset.heading=member.angle.toFixed(4);
     pilot.dataset.docked=String(member.docked);
     pilot.dataset.order=shipOrder(member);
     pilot.dataset.cargo=cargoTotal(member.cargo).toFixed(2);
