@@ -232,6 +232,12 @@ export class BuilderUI {
       toggle.addEventListener('click',()=>{
         this.expandedType=expanded?null:type;
         this.renderDetails();
+        if(this.expandedType){
+          // A long module disclosure would otherwise open below the visible
+          // panel fold. Move the chosen option up instead of hiding its specs.
+          const selected=$('room-details').querySelector<HTMLElement>('.room-choice.expanded');
+          selected?.scrollIntoView({behavior:'auto',block:'start'});
+        }
       });
       wrapper.append(toggle);
       if(expanded){
