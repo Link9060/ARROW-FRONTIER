@@ -381,12 +381,12 @@ body[data-frontier-view="interior"] .interior-hud{top:96px}
   border:1px solid #4a4a50;border-radius:6px;
   font-size:10px;color:#c1c1c5;letter-spacing:.04em
 }
-.room-choice-name{font-size:12px;font-weight:600;line-height:1.4}
+.room-choice-name{font-size:13px;font-weight:600;line-height:1.4}
 .room-choice-chevron{font-size:18px;color:#bcbcc1;font-weight:400}
 .room-choice-details,.room-installed-breakdown{
   border-top:1px solid #3b3b40;padding:12px 13px 15px;
 }
-.room-choice-details .detail-copy{font-size:11px;margin:4px 0 12px;color:#bcbcc1}
+.room-choice-details .detail-copy{font-size:12px;margin:4px 0 12px;color:#bcbcc1}
 .detail-subtitle{
   margin:13px 0 7px;font-size:9px;letter-spacing:.12em;
   font-weight:700;color:#e5e5e7
@@ -399,7 +399,7 @@ body[data-frontier-view="interior"] .interior-hud{top:96px}
 .material-row{
   display:flex;justify-content:space-between;gap:8px;
   padding:7px 0;border-bottom:1px solid #2c2c31;
-  font-size:10px;line-height:1.4
+  font-size:11px;line-height:1.4
 }
 .material-row:last-child{border-bottom:0}
 .material-name{color:#bebec3;font-weight:650;letter-spacing:.05em}
@@ -408,7 +408,7 @@ body[data-frontier-view="interior"] .interior-hud{top:96px}
 .room-economy-section{margin:13px 0}
 .room-economy-section .detail-copy{margin:3px 0 11px}
 .room-economy-list{padding-left:16px;margin:5px 0 11px}
-.room-economy-list li{font-size:11px;line-height:1.65;color:#b9b9bf;margin:3px 0}
+.room-economy-list li{font-size:12px;line-height:1.65;color:#b9b9bf;margin:3px 0}
 .room-choice-details .builder-action,.room-installed-breakdown .builder-action{
   justify-content:center;text-align:center;font-weight:620;
   border-color:#dadadd;background:#e7e7e8;color:#151518
