@@ -160,28 +160,30 @@ export class BuilderUI {
 
   /** Shared expandable specification, with real construction and running costs. */
   private renderEconomics(dest:HTMLElement,type:RoomType,level:number,
-      cost:Resources):void {
+      cost:Resources|null):void {
     const info=roomEconomics(type,level);
     dest.append(node('p','detail-copy',info.purpose));
 
-    const financial=node('div','room-materials');
-    financial.append(node('h4','detail-subtitle','MATERIALS REQUIRED'));
-    for(const ore of oreTypes){
-      if(cost[ore]===0)continue;
-      const row=node('div','material-row');
-      row.append(node('span','material-name',ore.toUpperCase()));
-      const quantity=node('span','material-count');
-      quantity.dataset.ore=ore;
-      quantity.dataset.needed=String(cost[ore]);
-      quantity.textContent=cost[ore]+' needed · '+
-        roundCargo(this.state.stored[ore])+' stored';
-      quantity.classList.toggle('shortage',this.state.stored[ore]<cost[ore]);
-      row.append(quantity);
-      financial.append(row);
+    if(cost!==null){
+      const financial=node('div','room-materials');
+      financial.append(node('h4','detail-subtitle','MATERIALS TO BUILD'));
+      for(const ore of oreTypes){
+        if(cost[ore]===0)continue;
+        const row=node('div','material-row');
+        row.append(node('span','material-name',ore.toUpperCase()));
+        const quantity=node('span','material-count');
+        quantity.dataset.ore=ore;
+        quantity.dataset.needed=String(cost[ore]);
+        quantity.textContent=cost[ore]+' needed · '+
+          roundCargo(this.state.stored[ore])+' stored';
+        quantity.classList.toggle('shortage',this.state.stored[ore]<cost[ore]);
+        row.append(quantity);
+        financial.append(row);
+      }
+      if(!oreTypes.some(ore=>cost[ore]>0))
+        financial.append(node('p','detail-copy','No construction materials required.'));
+      dest.append(financial);
     }
-    if(!oreTypes.some(ore=>cost[ore]>0))
-      financial.append(node('p','detail-copy','No construction materials required.'));
-    dest.append(financial);
 
     const sections=[
       ['BENEFITS',info.benefits],
@@ -277,8 +279,7 @@ export class BuilderUI {
     summary.append(toggle);
     const breakdown=node('div','room-installed-breakdown');
     // No materials are consumed simply by inspecting a built room.
-    this.renderEconomics(breakdown,room.type,room.level,
-      {iron:0,copper:0,alloy:0});
+    this.renderEconomics(breakdown,room.type,room.level,null);
     summary.append(breakdown);
     dest.append(summary);
     if(BUILDABLE.includes(room.type)){
