@@ -13,6 +13,7 @@ import { buildMothershipArtwork } from './MothershipArt';
 import type { MothershipArtwork } from './MothershipArt';
 import { locateDeckCell } from './deckLayout';
 import { resolveHullMovement } from '../sim/hullCollision';
+import { integrateFlightMotion } from '../sim/flightPhysics';
 import { MiningEffects } from './MiningEffects';
 import { MothershipAtmosphere } from './MothershipAtmosphere';
 import type { Asteroid, GameState, Point, Ship } from '../sim/model';
@@ -38,6 +39,7 @@ export class FlightScene extends Phaser.Scene {
   private virtualMove = {x:0,y:0};
   private virtualMining = false;
   private velocity = new Map<string,{x:number,y:number}>();
+  private manualThrust = 0;
   private cameraAnchor!: Phaser.GameObjects.Zone;
   private mode: ViewMode = 'flight';
   private pinch?: PinchGesture;
@@ -246,7 +248,10 @@ export class FlightScene extends Phaser.Scene {
   }
   private setViewMode(mode: ViewMode): void {
     this.mode = mode;
-    if(mode !== 'flight')this.velocity.clear();
+    if(mode !== 'flight'){
+      this.velocity.clear();
+      this.manualThrust=0;
+    }
     this.pinch = undefined;
     this.onViewChange(mode);
   }
@@ -392,11 +397,11 @@ export class FlightScene extends Phaser.Scene {
       const exhaust=view.getData('exhaust') as Phaser.GameObjects.Graphics;
       const hullLength=view.getData('hullLength') as number;
       exhaust.clear();
-      const speed=this.velocity.get(ship.id);
-      const moving=speed ? Math.hypot(speed.x,speed.y)/ship.speed : 0;
+      // Engine fire reflects real throttle, not drift velocity. Coasting is silent.
       const thrust=ship.docked ? 0 :
         this.mode==='transition' ? .72 :
-        ship.mode==='auto' ? .46 : Math.min(.85,moving);
+        ship.mode==='auto' ? .46 :
+        ship.id===this.state.activeShipId ? this.manualThrust : 0;
       if(thrust>.08){
         const shimmer=Math.sin(this.enginePhase*11+ship.x*.04)*1.6;
         const start=-hullLength*.31;
@@ -434,40 +439,33 @@ export class FlightScene extends Phaser.Scene {
   private stepManual(dt: number): void {
     const ship=activeShip(this.state);
     if(ship.docked)return;
-    let dx=0,dy=0;
-    if(this.keys.W.isDown||this.keys.UP.isDown)dy--;
-    dy+=this.virtualMove.y;
-    if(this.keys.S.isDown||this.keys.DOWN.isDown)dy++;
-    if(this.keys.A.isDown||this.keys.LEFT.isDown)dx--;
-    if(this.keys.D.isDown||this.keys.RIGHT.isDown)dx++;
-    dx+=this.virtualMove.x;
-    // Acceleration and gentle damping make piloting feel like a vehicle, not
-    // moving a cursor around a desktop. The speed cap is unchanged.
-    const v=this.velocity.get(ship.id)??{x:0,y:0};
-    const length=Math.hypot(dx,dy);
-    const acceleration=ship.speed*4.5;
-    if(length>0){
-      v.x+=(dx/length)*acceleration*dt;
-      v.y+=(dy/length)*acceleration*dt;
-    }
-    const drag=Math.exp(-3.8*dt);
-    v.x*=drag;v.y*=drag;
-    const speed=Math.hypot(v.x,v.y);
-    if(speed>ship.speed){v.x*=ship.speed/speed;v.y*=ship.speed/speed;}
+    // Asteroids-style piloting: rotate the hull independently of velocity.
+    // A/Left and D/Right steer; W/Up adds forward thrust; S/Down brakes.
+    // Keyboard and touch values are combined as booleans to avoid doubled input.
+    const turnLeft=this.keys.A.isDown||this.keys.LEFT.isDown||this.virtualMove.x<-.25;
+    const turnRight=this.keys.D.isDown||this.keys.RIGHT.isDown||this.virtualMove.x>.25;
+    const thrust=this.keys.W.isDown||this.keys.UP.isDown||this.virtualMove.y<-.25;
+    const brake=this.keys.S.isDown||this.keys.DOWN.isDown||this.virtualMove.y>.25;
+    const motion=integrateFlightMotion(
+      ship.angle,this.velocity.get(ship.id)??{x:0,y:0},
+      {turn:Number(turnRight)-Number(turnLeft),thrust,brake},ship.speed,dt
+    );
+    ship.angle=motion.angle;
+    this.manualThrust=motion.thrusting?.86:0;
+    const proposedX=ship.x+motion.displacement.x;
+    const proposedY=ship.y+motion.displacement.y;
+    // Keep the existing collision/side-hangar behavior. If a component
+    // hits the hull or world boundary, stop that component of momentum.
     const resolved=resolveHullMovement(ship,{
-      x:Phaser.Math.Clamp(ship.x+v.x*dt,35,WORLD.width-35),
-      y:Phaser.Math.Clamp(ship.y+v.y*dt,35,WORLD.height-35),
+      x:Phaser.Math.Clamp(proposedX,35,WORLD.width-35),
+      y:Phaser.Math.Clamp(proposedY,35,WORLD.height-35),
     },this.state);
-    if(Math.abs(resolved.x-ship.x)<.001)v.x=0;
-    if(Math.abs(resolved.y-ship.y)<.001)v.y=0;
+    if(Math.abs(resolved.x-ship.x)<.001 ||
+        proposedX<35 || proposedX>WORLD.width-35)motion.velocity.x=0;
+    if(Math.abs(resolved.y-ship.y)<.001 ||
+        proposedY<35 || proposedY>WORLD.height-35)motion.velocity.y=0;
     ship.x=resolved.x;ship.y=resolved.y;
-    this.velocity.set(ship.id,v);
-    const pointer=this.input.activePointer;
-    if(this.virtualMove.x||this.virtualMove.y){
-      ship.angle=Math.atan2(this.virtualMove.y,this.virtualMove.x);
-    }else if(pointer){
-      ship.angle=Phaser.Math.Angle.Between(ship.x,ship.y,pointer.worldX,pointer.worldY);
-    }
+    this.velocity.set(ship.id,motion.velocity);
   }
 
   private stepMining(dt:number):void {
@@ -749,7 +747,10 @@ export class FlightScene extends Phaser.Scene {
   }
   setControlsBlocked(blocked:boolean):void {
     this.controlsBlocked=blocked;
-    if(blocked)this.miningEffects?.clear();
+    if(blocked){
+      this.manualThrust=0;
+      this.miningEffects?.clear();
+    }
   }
 
   /** User may open the visual cutaway at any time when docked. */
