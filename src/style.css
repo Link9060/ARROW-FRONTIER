@@ -321,6 +321,12 @@ body[data-frontier-view="interior"] .interior-hud{top:96px}
    power report or ship-upgrade widgets. Detailed specs appear on selection. */
 .builder-panel{width:min(420px,calc(100vw - 32px))}
 .builder-instructions{margin-bottom:20px;max-width:345px}
+#builder-panel .panel-header{
+  position:sticky;top:-26px;z-index:5;
+  padding:26px 0 12px;margin-top:-26px;
+  background:rgba(19,19,21,.99);
+  border-bottom:1px solid #333339
+}
 .builder-instructions strong{color:#e9e9eb;font-weight:700;font-size:15px}
 .builder-grid-head{margin-top:0;padding-top:0;border-top:0}
 .builder-panel .deck-grid{gap:7px}
@@ -438,6 +444,7 @@ body[data-frontier-view="interior"] .interior-hud{top:96px}
 #fleet-upgrades .builder-action{justify-content:center}
 @media(max-width:760px){
   #builder-panel{width:min(430px,100vw)}
+  #builder-panel .panel-header{top:-22px;padding-top:22px;margin-top:-22px}
   .builder-panel .module-cell{min-height:39px}
   .builder-panel .deck-grid{gap:5px}
 }
