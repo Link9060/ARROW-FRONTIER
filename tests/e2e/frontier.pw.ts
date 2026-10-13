@@ -40,14 +40,18 @@ test('real desktop flight, departure, side docking and interior controls', async
     await page.keyboard.up('Space');
   }
 
-  // Start outside the enlarged mothership hull. Approach in manual flight.
-  await page.keyboard.down('s');
+  // The scout departs from the north side, pointing out into space.
+  // Rotate ~180 degrees, then thrust back toward the physical docking radius.
+  await page.keyboard.down('a');
+  await page.waitForTimeout(825);
+  await page.keyboard.up('a');
+  await page.keyboard.down('w');
   try {
     await expect(page.locator('#pilot-tip')).toContainText('Within docking range',{
       timeout:12_000,
     });
   } finally {
-    await page.keyboard.up('s');
+    await page.keyboard.up('w');
   }
   await page.locator('#dock-btn').click();
   await expect(page.locator('body')).toHaveAttribute('data-frontier-view','transition');
@@ -179,10 +183,14 @@ test('dual-side hangars: saved industrial miner occupies lower bay and launches 
       return !miner.docked && miner.y>1600+690 && miner.berth===undefined;
     });
   },{timeout:8000}).toBe(true);
+  // The heavy miner leaves the south bay pointing south. Its turn rate
+  // is slower than the scout's, so allow a longer half-turn before thrust.
+  await page.keyboard.down('a');
+  await page.waitForTimeout(1230);
+  await page.keyboard.up('a');
   await page.keyboard.down('w');
   try{
-    // CI software rendering can run well below 30fps. This tests real ship
-    // movement after clicking a focused launch button, not a fixed animation.
+    // Exercise real steering plus thrust, not obsolete screen-direction motion.
     await expect(page.locator('#pilot-tip')).toContainText('Within docking range',{timeout:22000});
   }finally{await page.keyboard.up('w');}
   await page.locator('#dock-btn').click();
