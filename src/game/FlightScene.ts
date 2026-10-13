@@ -451,7 +451,7 @@ export class FlightScene extends Phaser.Scene {
       {turn:Number(turnRight)-Number(turnLeft),thrust,brake},ship.speed,dt
     );
     ship.angle=motion.angle;
-    this.manualThrust=motion.thrusting?.86:0;
+    this.manualThrust=motion.thrusting ? .86 : 0;
     const proposedX=ship.x+motion.displacement.x;
     const proposedY=ship.y+motion.displacement.y;
     // Keep the existing collision/side-hangar behavior. If a component
