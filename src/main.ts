@@ -102,7 +102,10 @@ function setFleetOpen(value:boolean):void{
   document.body.dataset.uiPanel=value?'fleet':builder.isOpen?'build':'none';
   scene.refreshCameraZoom();
   updateFlightLock();
-  if(value)updateUI();
+  if(value){
+    builder.renderFabricator();
+    updateUI();
+  }
 }
 function requestLaunchOrDock():void{
   if(!started||scene.viewMode==='transition')return;
