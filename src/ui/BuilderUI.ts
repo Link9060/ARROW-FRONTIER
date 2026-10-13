@@ -253,6 +253,7 @@ export class BuilderUI {
         breakdown.append(build);
         const explanation=node('p','room-action-hint',issue??'Deduct materials and install this room.');
         explanation.dataset.actionHint='build';
+        breakdown.append(explanation);
         wrapper.append(breakdown);
       }
       list.append(wrapper);
