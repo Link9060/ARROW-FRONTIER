@@ -1,4 +1,40 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
+
+// Use the visible fleet telemetry to fly toward the real mothership, rather
+// than assuming a timed 180-degree keypress means 180 degrees on slow CI.
+const HOME_X=2200, HOME_Y=1600;
+async function shipDistance(page:Page,id:string):Promise<number>{
+  const ship=page.locator('.fleet-ship[data-ship-id="'+id+'"]');
+  const point=await ship.evaluate(element=>({
+    x:Number((element as HTMLButtonElement).dataset.worldX),
+    y:Number((element as HTMLButtonElement).dataset.worldY),
+  }));
+  return Math.hypot(point.x-HOME_X,point.y-HOME_Y);
+}
+async function pointShipTowardHome(page:Page,id:string):Promise<void>{
+  const ship=page.locator('.fleet-ship[data-ship-id="'+id+'"]');
+  let lastError=Infinity;
+  for(let attempt=0;attempt<20;attempt++){
+    const point=await ship.evaluate(element=>({
+      x:Number((element as HTMLButtonElement).dataset.worldX),
+      y:Number((element as HTMLButtonElement).dataset.worldY),
+      heading:Number((element as HTMLButtonElement).dataset.heading),
+    }));
+    const goal=Math.atan2(HOME_Y-point.y,HOME_X-point.x);
+    lastError=Math.atan2(Math.sin(goal-point.heading),Math.cos(goal-point.heading));
+    if(Math.abs(lastError)<.35)return;
+    const key=lastError>0?'d':'a';
+    await page.keyboard.down(key);
+    try{
+      await page.waitForTimeout(Math.max(150,Math.min(420,Math.abs(lastError)*150)));
+    }finally{
+      await page.keyboard.up(key);
+    }
+    // Let the scene sample the new heading before the next correction pulse.
+    await page.waitForTimeout(160);
+  }
+  throw new Error('Could not align '+id+' to home; last heading error '+lastError.toFixed(2)+'rad');
+}
 
 test('real desktop flight, departure, side docking and interior controls', async ({page})=>{
   const errors:string[]=[];
@@ -40,16 +76,11 @@ test('real desktop flight, departure, side docking and interior controls', async
     await page.keyboard.up('Space');
   }
 
-  // The scout departs from the north side, pointing out into space.
-  // Rotate ~180 degrees, then thrust back toward the physical docking radius.
-  await page.keyboard.down('a');
-  await page.waitForTimeout(825);
-  await page.keyboard.up('a');
+  // Face home using measured heading, then apply forward thrust.
+  await pointShipTowardHome(page,'scout');
   await page.keyboard.down('w');
   try {
-    await expect(page.locator('#pilot-tip')).toContainText('Within docking range',{
-      timeout:12_000,
-    });
+    await expect.poll(()=>shipDistance(page,'scout'),{timeout:12_000}).toBeLessThan(690);
   } finally {
     await page.keyboard.up('w');
   }
@@ -183,15 +214,12 @@ test('dual-side hangars: saved industrial miner occupies lower bay and launches 
       return !miner.docked && miner.y>1600+690 && miner.berth===undefined;
     });
   },{timeout:8000}).toBe(true);
-  // The heavy miner leaves the south bay pointing south. Its turn rate
-  // is slower than the scout's, so allow a longer half-turn before thrust.
-  await page.keyboard.down('a');
-  await page.waitForTimeout(1230);
-  await page.keyboard.up('a');
+  // The heavier miner turns more slowly. Steer from live heading,
+  // not a fixed-duration assumption that breaks under slower rendering.
+  await pointShipTowardHome(page,'miner');
   await page.keyboard.down('w');
   try{
-    // Exercise real steering plus thrust, not obsolete screen-direction motion.
-    await expect(page.locator('#pilot-tip')).toContainText('Within docking range',{timeout:22000});
+    await expect.poll(()=>shipDistance(page,'miner'),{timeout:22000}).toBeLessThan(690);
   }finally{await page.keyboard.up('w');}
   await page.locator('#dock-btn').click();
   await expect(page.locator('body')).toHaveAttribute('data-frontier-view','interior',{timeout:50_000});
