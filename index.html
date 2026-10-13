@@ -90,33 +90,22 @@
         <div><span>Alloy</span><strong id="stored-alloy">0</strong></div>
       </div>
       <div class="section-head"><h3>POWER</h3><span id="power-summary">7 / 22</span></div>
+      <div class="section-head"><h3>SHIP UPGRADES</h3><span>FABRICATOR</span></div>
+      <div id="fleet-upgrades" class="fabricator-panel" aria-label="Ship upgrades"></div>
       <button type="button" id="fleet-build" class="text-button">Open room management <span>↗</span></button>
       <p class="fine-print">Fleet work runs locally. No RAVIN model tokens are used.</p>
       <button type="button" id="reset-save" class="reset-save">Restart local universe</button>
     </aside>
 
-    <aside id="builder-panel" class="side-panel builder-panel" aria-hidden="true" aria-label="Mothership construction">
+    <aside id="builder-panel" class="side-panel builder-panel" aria-hidden="true" aria-label="Mothership deck construction">
       <div class="panel-header">
         <div><div class="eyebrow">MOTHERSHIP / DECK 01</div><h2>Build</h2></div>
         <button id="builder-close" type="button" class="close-button" aria-label="Close construction">×</button>
       </div>
-      <p class="panel-description">Select a module, then choose an adjacent empty deck position.</p>
-      <div class="section-head"><h3>MODULES</h3><span>SELECT TO BUILD</span></div>
-      <div id="room-palette" class="module-palette"></div>
-      <div class="section-head"><h3>DECK MAP</h3><span id="builder-count">4 / 24</span></div>
+      <p class="panel-description builder-instructions">Select a <strong>+</strong> to choose a new room, or select an installed room to inspect it.</p>
+      <div class="section-head builder-grid-head"><h3>DECK GRID</h3><span id="builder-count">4 / 24</span></div>
       <div id="room-grid" class="deck-grid" aria-label="Mothership 6 by 4 deck layout"></div>
-      <div id="room-details" class="room-details"></div>
-      <div class="section-head"><h3>SYSTEMS</h3><span id="refinery-status">OFFLINE</span></div>
-      <div class="systems-details">
-        <span>Power <strong><span id="builder-load">7</span> / <span id="builder-output">22</span></strong></span>
-        <span>Demand <strong id="builder-demand">7</strong></span>
-        <span>Iron <strong id="builder-iron">0</strong></span>
-        <span>Copper <strong id="builder-copper">0</strong></span>
-        <span>Alloy <strong id="builder-alloy">0</strong></span>
-        <span>Alloy made <strong id="refinery-produced">0</strong></span>
-      </div>
-      <div class="section-head"><h3>SHIP UPGRADES</h3></div>
-      <div id="fabricator-panel" class="fabricator-panel"></div>
+      <div id="room-details" class="room-details" aria-live="polite" hidden></div>
     </aside>
 
     <div id="scrim" class="scrim" aria-hidden="true"></div>
