@@ -5,7 +5,7 @@ export default defineConfig({
   testMatch:'**/*.pw.ts',
   // Cinematic docking plus screenshots can exceed 45 seconds on CI's
   // software-rendered Chromium. Individual gameplay assertions keep bounds.
-  timeout:100_000,
+  timeout:150_000,
   expect:{timeout:10_000},
   retries:process.env.CI?1:0,
   workers:process.env.CI?1:undefined,

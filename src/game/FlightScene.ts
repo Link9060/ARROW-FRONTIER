@@ -807,10 +807,13 @@ export class FlightScene extends Phaser.Scene {
   }
 
   update(_time:number,delta:number):void {
-    // Rendering at 8 FPS must not reduce real piloting speed to one-quarter.
-    // Consume measured elapsed time in 50 ms substeps, while capping the
-    // longest foreground stall to avoid tunneling into the hull.
-    const manualSeconds=Math.min(.25,Math.max(0,delta/1000));
+    // Keep thrust, braking, and steering tied to elapsed real time even on
+    // software-rendered/low-FPS browsers. A 250ms frame cap previously made
+    // the heavy miner nearly stationary when the browser rendered slowly,
+    // preventing manual returns to the hangar. Physics still advances in
+    // 50ms substeps below so we cannot tunnel through the mothership.
+    // Cap long background-tab stalls to avoid huge unexpected moves.
+    const manualSeconds=Math.min(1,Math.max(0,delta/1000));
     this.updateTouchNavigation();
     if(!this.controlsBlocked && this.mode==='flight'){
       let remaining=manualSeconds;

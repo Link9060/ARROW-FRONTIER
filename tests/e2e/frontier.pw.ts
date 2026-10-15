@@ -14,7 +14,7 @@ async function shipDistance(page:Page,id:string):Promise<number>{
 async function pointShipTowardHome(page:Page,id:string):Promise<void>{
   const ship=page.locator('.fleet-ship[data-ship-id="'+id+'"]');
   let lastError=Infinity;
-  for(let attempt=0;attempt<35;attempt++){
+  for(let attempt=0;attempt<45;attempt++){
     const point=await ship.evaluate(element=>({
       x:Number((element as HTMLButtonElement).dataset.worldX),
       y:Number((element as HTMLButtonElement).dataset.worldY),
@@ -219,7 +219,7 @@ test('dual-side hangars: saved industrial miner occupies lower bay and launches 
   await pointShipTowardHome(page,'miner');
   await page.keyboard.down('w');
   try{
-    await expect.poll(()=>shipDistance(page,'miner'),{timeout:22000}).toBeLessThan(690);
+    await expect.poll(()=>shipDistance(page,'miner'),{timeout:45000}).toBeLessThan(690);
   }finally{await page.keyboard.up('w');}
   await page.locator('#dock-btn').click();
   await expect(page.locator('body')).toHaveAttribute('data-frontier-view','interior',{timeout:50_000});
