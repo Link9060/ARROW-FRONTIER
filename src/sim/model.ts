@@ -58,6 +58,10 @@ export interface GameState {
   activeShipId: string;
   ships: Ship[];
   asteroids: Asteroid[];
+  /** Solar navigation; absent in v0.6.5 saves and migrated on load. */
+  currentDestinationId?: string;
+  /** Previously visited local asteroid fields, including mined-out deposits. */
+  destinationAsteroids?: Record<string,Asteroid[]>;
   lifetimeMined: number;
   rooms: Room[];
   nextRoomId: number;
@@ -126,6 +130,8 @@ export function makeNewGame(now = Date.now()): GameState {
       },
     ],
     asteroids,
+    currentDestinationId:'vesta',
+    destinationAsteroids:{},
     lifetimeMined: 0,
     rooms: starterRooms(),
     nextRoomId: 5,

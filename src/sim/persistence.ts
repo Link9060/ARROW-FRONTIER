@@ -4,6 +4,7 @@ import { hitsMothership } from './hullCollision';
 import type { Cargo, GameState, Resources, Room, RoomType, Ship } from './model';
 import { simulateOffline } from './engine';
 import { capacityFor } from './mothership';
+import { destinationById, START_DESTINATION } from './solarSystem';
 
 const SAVE_KEY = 'arrow-frontier-expansion-v2';
 const LEGACY_KEY = 'arrow-frontier-first-flight-v1';
@@ -187,6 +188,24 @@ export function loadGame(now = Date.now()): LoadResult {
     const migrated = stored === null && validV1(decoded);
     const loaded = validV2(decoded) ? decoded : migrated ? upgradeLegacy(decoded as Record<string, unknown>) : null;
     if (loaded) {
+      // Existing v0.6.x saves are kept intact and start in Vesta orbit.
+      // Invalid region cache entries are ignored, never allowed to corrupt
+      // a player's original inventory, fleet or asteroid field.
+      let migratedSystem=false;
+      if(!loaded.currentDestinationId || !destinationById(loaded.currentDestinationId)){
+        loaded.currentDestinationId=START_DESTINATION;
+        migratedSystem=true;
+      }
+      const cache=loaded.destinationAsteroids;
+      if(!cache || typeof cache!=='object' || Array.isArray(cache)){
+        loaded.destinationAsteroids={};migratedSystem=true;
+      }else{
+        for(const [id,field] of Object.entries(cache)){
+          if(!destinationById(id)||!validAsteroids(field)){
+            delete cache[id];migratedSystem=true;
+          }
+        }
+      }
       const expandedWorld = migrateWorldScale(loaded);
       reconcileBerths(loaded);
       const recoveredDocking=recoverInterruptedDocking(loaded);
@@ -194,7 +213,7 @@ export function loadGame(now = Date.now()): LoadResult {
       const seconds = simulateOffline(loaded, Math.max(0, (now - loaded.savedAt) / 1000));
       loaded.savedAt = now;
       // Commit the new coordinates and berth assignments without deleting old saves.
-      if (migrated || expandedWorld || recoveredDocking) saveGame(loaded, now);
+      if (migrated || migratedSystem || expandedWorld || recoveredDocking) saveGame(loaded, now);
       return { state: loaded, offlineSeconds: seconds, recovered: true, migrated };
     }
   } catch (error) {

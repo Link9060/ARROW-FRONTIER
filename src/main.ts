@@ -9,6 +9,8 @@ import { dockedBerthCount, hangarCapacity, sideForBerth } from './sim/hangar';
 import { powerReport } from './sim/mothership';
 import { loadGame, saveGame, resetGame } from './sim/persistence';
 import { BuilderUI } from './ui/BuilderUI';
+import { SystemMapUI } from './ui/SystemMapUI';
+import { destinationById, START_DESTINATION, travelToDestination } from './sim/solarSystem';
 
 const loaded=loadGame();
 const state=loaded.state;
@@ -73,6 +75,26 @@ const builder=new BuilderUI(state,()=>{
   updateFlightLock();
 },notice);
 scene.setDeckSelectionHandler((x,y)=>builder.selectCell(x,y));
+
+const systemMap=new SystemMapUI($('system-map'),state,(id)=>{
+  const outcome=travelToDestination(state,id);
+  if(outcome==='arrived'){
+    scene.refreshLocalRegion();
+    persist();
+    updateUI();
+    notice('ARRIVED · '+(destinationById(id)?.name??id).toUpperCase()+' ORBIT');
+  }
+  return outcome;
+},(open)=>{
+  if(open){
+    if(builder.isOpen)builder.close();
+    if(fleetOpen)setFleetOpen(false);
+    clearVirtualControls();
+  }
+  scene.showSystemMap(open);
+  $('map-toggle').setAttribute('aria-expanded',String(open));
+  updateFlightLock();
+});
 const virtualKeys=new Set<string>();
 const keyboardDirections=new Set<string>();
 let touchMine=false;
@@ -90,7 +112,7 @@ function clearVirtualControls():void{
   updateVirtualControls();
 }
 function updateFlightLock():void{
-  scene.setControlsBlocked(!started||fleetOpen||builder.isOpen);
+  scene.setControlsBlocked(!started||fleetOpen||builder.isOpen||systemMap.isOpen);
 }
 function setFleetOpen(value:boolean):void{
   if(scene.viewMode==='transition'&&value)return;
@@ -153,6 +175,8 @@ function updateUI():void{
   const dist=distance(ship,HOME);
   const power=powerReport(state);
   const transitioning=scene.viewMode==='transition';
+  $('current-location-label').textContent=
+    (destinationById(state.currentDestinationId??START_DESTINATION)?.name??'Vesta').toUpperCase();
 
   $('ship-name').textContent=ship.name;
   $('ship-class').textContent=ship.role.includes('MINER')?'MINER':'SCOUT';
@@ -288,6 +312,10 @@ $('start-btn').addEventListener('click',()=>{
   if(loaded.migrated)notice('Previous save migrated safely');
 });
 $('fleet-toggle').addEventListener('click',()=>setFleetOpen(!fleetOpen));
+$('map-toggle').addEventListener('click',()=>{
+  if(!started||scene.viewMode==='transition')return;
+  systemMap.toggle();
+});
 $('fleet-close').addEventListener('click',()=>setFleetOpen(false));
 $('build-toggle').addEventListener('click',()=>{
   if(fleetOpen)setFleetOpen(false);
@@ -332,7 +360,7 @@ const keyDirection:Record<string,string>={
   KeyA:'left',ArrowLeft:'left',KeyD:'right',ArrowRight:'right',
 };
 window.addEventListener('keydown',event=>{
-  if(!started||event.target instanceof HTMLInputElement ||
+  if(!started||systemMap.isOpen||event.target instanceof HTMLInputElement ||
       event.target instanceof HTMLTextAreaElement ||
       event.target instanceof HTMLSelectElement)return;
   const direction=keyDirection[event.code];
@@ -350,7 +378,8 @@ window.addEventListener('blur',()=>{
 window.addEventListener('keydown',event=>{
   if(!started||event.repeat)return;
   if(event.key==='Escape'){
-    if(builder.isOpen)builder.close();
+    if(systemMap.isOpen)systemMap.close();
+    else if(builder.isOpen)builder.close();
     else if(fleetOpen)setFleetOpen(false);
     event.preventDefault();
     return;
@@ -358,6 +387,10 @@ window.addEventListener('keydown',event=>{
   if(event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement ||
       event.target instanceof HTMLSelectElement)return;
   const key=event.key.toLowerCase();
+  if(key==='m'&&scene.viewMode!=='transition'){
+    systemMap.toggle();event.preventDefault();return;
+  }
+  if(systemMap.isOpen)return;
   if(key==='c'){setFleetOpen(!fleetOpen);event.preventDefault();}
   else if(key==='b'){
     if(fleetOpen)setFleetOpen(false);

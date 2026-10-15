@@ -14,17 +14,19 @@ import type { MothershipArtwork } from './MothershipArt';
 import { locateDeckCell } from './deckLayout';
 import { resolveHullMovement } from '../sim/hullCollision';
 import { integrateFlightMotion } from '../sim/flightPhysics';
+import { destinationById, START_DESTINATION } from '../sim/solarSystem';
 import { MiningEffects } from './MiningEffects';
 import { MothershipAtmosphere } from './MothershipAtmosphere';
 import type { Asteroid, GameState, Point, Ship } from '../sim/model';
 
-export type ViewMode = 'flight' | 'interior' | 'transition';
+export type ViewMode = 'flight' | 'interior' | 'transition' | 'system';
 interface PinchGesture { centerX: number; centerY: number; distance: number; }
 
 export class FlightScene extends Phaser.Scene {
   private keys!: Record<string, Phaser.Input.Keyboard.Key>;
   private shipViews = new Map<string, Phaser.GameObjects.Container>();
   private asteroidViews = new Map<string, Phaser.GameObjects.Container>();
+  private regionAtmosphere?: Phaser.GameObjects.Graphics;
   private art?: MothershipArtwork;
   private dockRing?: Phaser.GameObjects.Graphics;
   private miningEffects!: MiningEffects;
@@ -74,6 +76,7 @@ export class FlightScene extends Phaser.Scene {
     camera.setBackgroundColor('#05080d');
     camera.setBounds(0, 0, WORLD.width, WORLD.height);
     this.drawBackground();
+    this.drawLocalRegionAtmosphere();
     this.drawMothership();
 
     for (const asteroid of this.state.asteroids) {
@@ -254,6 +257,54 @@ export class FlightScene extends Phaser.Scene {
     }
     this.pinch = undefined;
     this.onViewChange(mode);
+  }
+
+  /** Local backdrop varies by destination without replacing the shared world. */
+  private drawLocalRegionAtmosphere():void {
+    this.regionAtmosphere?.destroy();
+    const destination=destinationById(this.state.currentDestinationId??START_DESTINATION);
+    const atmosphere=this.add.graphics().setDepth(-56);
+    const tint=destination?.tint??0x646c77;
+    atmosphere.fillStyle(tint,.11);
+    atmosphere.fillEllipse(HOME.x+1070,HOME.y-520,1550,1120);
+    atmosphere.fillStyle(tint,.06);
+    atmosphere.fillCircle(HOME.x-1180,HOME.y+760,850);
+    atmosphere.lineStyle(1,tint,.15);
+    atmosphere.strokeCircle(HOME.x+1100,HOME.y-680,360);
+    this.regionAtmosphere=atmosphere;
+  }
+
+  /** Recreate only region-specific world objects after a system jump. */
+  refreshLocalRegion():void {
+    if(!this.scene?.isActive())return;
+    for(const view of this.asteroidViews.values())view.destroy(true);
+    this.asteroidViews.clear();
+    for(const asteroid of this.state.asteroids){
+      this.asteroidViews.set(asteroid.id,this.makeAsteroid(asteroid));
+    }
+    this.miningEffects?.clear();
+    this.drawLocalRegionAtmosphere();
+    this.refreshViews();
+    this.onStateChange();
+  }
+
+  /** System map is a navigational layer over the local Phaser scene. */
+  showSystemMap(open:boolean):void {
+    if(this.mode==='transition')return;
+    if(open){
+      if(this.mode==='system')return;
+      this.setViewMode('system');
+    }else if(this.mode==='system'){
+      const docked=activeShip(this.state).docked;
+      this.setViewMode(docked?'interior':'flight');
+      this.setArtworkOpacity(docked?0:1);
+      this.cameraTouched=false;
+      if(!docked){
+        this.cameraAnchor.setPosition(activeShip(this.state).x,activeShip(this.state).y);
+        this.cameras.main.startFollow(this.cameraAnchor,true,.09,.09);
+      }
+      this.refreshCameraZoom();
+    }
   }
 
   private drawBackground(): void {
