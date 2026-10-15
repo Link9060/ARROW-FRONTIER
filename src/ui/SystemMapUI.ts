@@ -2,7 +2,7 @@ import type { GameState } from '../sim/model';
 import {
   START_DESTINATION, SOLAR_SYSTEM, destinationById, orbitalPosition,
 } from '../sim/solarSystem';
-import type { Destination, TravelResult } from '../sim/solarSystem';
+import type { TravelResult } from '../sim/solarSystem';
 
 /** Accessible, animated DOM/SVG system chart. Phaser remains local flight. */
 export class SystemMapUI {
