@@ -20,7 +20,7 @@ export class SystemMapUI {
     this.root=root;this.state=state;this.onTravel=onTravel;
     this.onVisibility=onVisibility;
     this.selectedId=state.currentDestinationId??START_DESTINATION;
-    this.build();
+    // Keep flight startup light: the orbital chart is only built on demand.
     this.root.addEventListener('click',event=>{
       const target=event.target as Element;
       if(target.closest('#system-close')){this.close();return;}
@@ -41,6 +41,7 @@ export class SystemMapUI {
   get isOpen():boolean{return this.visible;}
   open():void {
     if(this.visible)return;
+    if(!this.root.firstElementChild)this.build();
     this.visible=true;
     this.selectedId=this.state.currentDestinationId??START_DESTINATION;
     this.root.hidden=false;
