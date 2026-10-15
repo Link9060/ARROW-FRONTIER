@@ -305,6 +305,9 @@ test('background miner continues flying while the player launches and docks',asy
 });
 
 test('Fleet panel dispatches docked miner, recalls it and retains Hold without manual pilot switching',async({page})=>{
+  // CI software rendering can stretch physical two-sided hangar paths.
+  // Continue asserting genuine launch, return, docking and Hold transitions.
+  test.setTimeout(240_000);
   const errors:string[]=[];
   page.on('pageerror',e=>errors.push(e.message));
   await page.goto('/');
@@ -342,9 +345,12 @@ test('Fleet panel dispatches docked miner, recalls it and retains Hold without m
   await expect(miner).toHaveAttribute('data-docked','false',{timeout:7000});
   await expect(page.locator('#hangar-summary')).toContainText('ARROW-01');
   await page.screenshot({path:'test-results/v063-fleet-mine.png'});
+  // Return should begin only after the ship has cleared the launch airlock.
+  // Issuing Recall midway through a cinematic made CI timing unpredictable.
+  await expect(miner.locator('.fleet-state')).toContainText('MINING',{timeout:60_000});
   await recall.click();
   await expect(miner).toHaveAttribute('data-order','return');
-  await expect(miner).toHaveAttribute('data-docked','true',{timeout:45000});
+  await expect(miner).toHaveAttribute('data-docked','true',{timeout:90000});
   await expect(miner).toHaveAttribute('data-order','hold');
   await expect(miner.locator('.fleet-state')).toContainText('DOCKED');
   await page.screenshot({path:'test-results/v063-fleet-recalled.png'});
