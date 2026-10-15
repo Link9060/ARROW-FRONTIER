@@ -30,10 +30,13 @@ async function verifyManualFlightInputs(page:Page,id:string):Promise<void>{
   }));
   await page.keyboard.down('w');
   try{
-    await expect.poll(async()=>ship.evaluate(el=>
-      Math.hypot(Number((el as HTMLButtonElement).dataset.worldX)-start.x,
-        Number((el as HTMLButtonElement).dataset.worldY)-start.y)
-    ),{timeout:30_000}).toBeGreaterThan(3);
+    // Playwright serializes evaluate callbacks into the browser realm, so
+    // read telemetry through locators rather than capturing local variables.
+    await expect.poll(async()=>{
+      const x=Number(await ship.getAttribute('data-world-x'));
+      const y=Number(await ship.getAttribute('data-world-y'));
+      return Math.hypot(x-start.x,y-start.y);
+    },{timeout:30_000}).toBeGreaterThan(3);
   }finally{
     await page.keyboard.up('w');
   }
