@@ -16,7 +16,17 @@ async function shipDistance(page:Page,id:string):Promise<number>{
 // identical runs, so use live ship telemetry rather than timed key pulses.
 async function verifyManualFlightInputs(page:Page,id:string):Promise<void>{
   const ship=page.locator('.fleet-ship[data-ship-id="'+id+'"]');
+  // Mouse movement must never aim the manually piloted ship.
+  // This catches regressions to the old cursor-following control model.
   const heading=Number(await ship.getAttribute('data-heading'));
+  const canvas=page.locator('#game canvas');
+  const bounds=await canvas.boundingBox();
+  expect(bounds).not.toBeNull();
+  await page.mouse.move(bounds!.x+bounds!.width*.25,bounds!.y+bounds!.height*.25);
+  await page.waitForTimeout(180);
+  await page.mouse.move(bounds!.x+bounds!.width*.75,bounds!.y+bounds!.height*.75);
+  await page.waitForTimeout(250);
+  expect(Number(await ship.getAttribute('data-heading'))).toBeCloseTo(heading,3);
   await page.keyboard.down('d');
   try{
     await expect.poll(async()=>Number(await ship.getAttribute('data-heading')),
@@ -100,6 +110,7 @@ test('real desktop flight, departure, side docking and interior controls', async
   expect(toastBox!.width).toBeLessThan(400);
   await page.screenshot({path:'test-results/v06-launch-transition.png'});
   await expect(page.locator('body')).toHaveAttribute('data-frontier-view','flight',{timeout:30_000});
+  await expect(page.locator('#flight-control-id')).toContainText('NO MOUSE AIM');
   await expect(page.locator('#dock-btn')).toBeVisible();
   await page.screenshot({path:'test-results/v06-desktop-flight.png'});
   // The first ore field is physically in range of the newly launched scout.
